@@ -1,7 +1,7 @@
 # Reproducing the paper's results
 
 ## Archived Results
-For reference, the repository contains archived results from our paper (Figures, CSV files).
+For reference, the repository contains archived results from our paper ([Figures](https://github.com/owensgroup/MVGpuBTree/tree/main/archived-figs/Tesla-V100-PCIE-32GB), [CSV files](https://github.com/owensgroup/MVGpuBTree/tree/main/archived-results/Tesla-V100-PCIE-32GB)).
 
 ## Building the code
 
@@ -24,7 +24,7 @@ Refer to [Python guides](https://docs.python-guide.org/starting/install3/linux/)
 ### Building
 
 ```bash
-git clone
+git clone https://github.com/owensgroup/MVGpuBTree.git
 cd
 mkdir build && cd build
 cmake ..
