@@ -25,7 +25,7 @@ Refer to [Python guides](https://docs.python-guide.org/starting/install3/linux/)
 
 ```bash
 git clone https://github.com/owensgroup/MVGpuBTree.git
-cd
+cd MVGpuBTree
 mkdir build && cd build
 cmake ..
 make -j
