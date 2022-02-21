@@ -117,7 +117,7 @@ cd ../plots
 ```
 Then, set some variables:
 ```bash
-GPU_NAME="Tesla-V100-PCIE-32GB"             # GPU name (check the results folder if you are not sure about the GPU name)
+GPU_NAME="your_GPU_name"                    # GPU name (check the results folder if you are not sure about the GPU name)
 input_dir="../results/"$GPU_NAME            # All executable generated results (in csv format) will be stored under this directory
 output_dir="./figs/"$GPU_NAME               # Where we will store the figures
 mkdir -p $output_dir                        # Creating results directory
