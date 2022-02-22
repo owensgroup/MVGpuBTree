@@ -62,3 +62,14 @@ date >> validation_log.txt
 ./bin/concurrent_insert_range_bench --range-length=8 --initial-size=1000000 --update-ratio=0.50 --num-ops=1000000 --validate-result=true --num-experiments=3 >> validation_log.txt
 date >> validation_log.txt
 ./bin/concurrent_insert_range_bench --range-length=8 --initial-size=1000000 --update-ratio=0.90 --num-ops=1000000 --validate-result=true --num-experiments=3 >> validation_log.txt
+
+date >> validation_log.txt
+
+cat validation_log.txt | grep expected
+if grep -q expected validation_log.txt; then
+    echo "Found errors. Check the build/validation_log.txt."
+else
+    echo "All tests succeeded."
+fi
+
+cd ..
