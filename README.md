@@ -23,7 +23,7 @@ Please create an issue if you face challenges with any of the following limitati
 * NVIDIA Volta GPU or later microarchitectures
 * CMake 3.8 or later
 * CUDA 11.5 or later
-* GPU with 16 GiBs or higher to run the benchmarks
+* GPU with 20 GiBs or higher to run the benchmarks
 
 ### Limitations
 * Keys and values must have a type of unsigned 32-bit
