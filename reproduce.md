@@ -196,9 +196,13 @@ plot_concurrent_insert_range_reclamation_stats.txt      # Empty log file
 In addition to the unit tests, we provide additional extensive validation. All scripts contain a flag to turn validation on. Setting `validate_results` or `validate` to true will validate the query results. However, validation is relatively slow (especially for range query benchmark) as it performs all operations serially on the CPU. Additional CPU memory will be required (~30 GiBs). GPU memory usage can go up to 30 GiBs. We recommend running single experiments and not the entire benchmarking script to test validation. Most memory usage is used for range query results; therefore, reducing the range query size will significantly reduce memory usage.
 
 
-For convenience, a script that performs tests is provided. From the `MVGpuBTre` top-level directory, follow these steps:
+For convenience, a script that performs tests is provided. The script took ~5 hours on our system. From the `MVGpuBTre` top-level directory, run the following script:
 ```bash
 source scripts/validation_tests.sh
+```
+A successful validation will return:
+```
+All tests succeeded.
 ```
 
 
