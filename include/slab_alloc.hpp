@@ -420,8 +420,6 @@ struct SlabAllocLight {
 
   void preallocate() {
     auto bytes_count = DeviceAllocator::get_required_size();
-    std::cout << "SlabAllocLight allocated: " << bytes_count / (1ull << 30) << "GiBs\n ";
-    std::cout << " Required address bits : " << DeviceAllocator::compute_required_bits() << '\n';
 #ifdef COLLECT_ALLOCATOR_STATS
     bytes_count += 8;  // last two numbers are #currently allocated #total allocated
 #endif

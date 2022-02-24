@@ -17,7 +17,9 @@
 #pragma once
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
+
 #include <host_allocators.hpp>
+
 #include <device_bump_allocator.hpp>
 #include <memory>
 #include <memory_utils.hpp>
@@ -244,6 +246,7 @@ struct DEBR_device {
                                      int block_id,
                                      Allocator& allocator,
                                      AllocatorCtx& alloc_ctx) {
+    tile.sync();
     __threadfence();
 
     // read current_epoch
@@ -400,6 +403,7 @@ struct DEBR_device {
   // called after the data structure operation
   template <typename tile_type>
   DEVICE_QUALIFIER void enter_qstate(tile_type& tile, int block_id) {
+    tile.sync();
     if (tile.thread_rank() == 0) { set_quiescent_bit(announce_ + block_id); }
     tile.sync();
     __threadfence();
@@ -453,7 +457,7 @@ struct DEBR_device {
       cur_bag_       = count_per_bag_ + NUM_BAGS;
       advance_epoch_ = cur_bag_ + 1;
 
-      // intiialize pointers to global state
+      // initialize pointers to global state
       announce_             = host.d_announce_;
       current_epoch_        = host.d_current_epoch_;
       num_blocks_           = host.num_blocks_;
@@ -463,7 +467,7 @@ struct DEBR_device {
       *advance_epoch_ = false;
       *cur_bag_       = 0;
     }
-    // intialize interenal storage
+    // initialize internal storage
     initialize(tile);
   }
 

@@ -29,8 +29,6 @@ struct device_bump_allocator {
   device_bump_allocator() {
     d_buffer_     = cuda_allocator<T>().allocate(max_size_);
     d_slab_count_ = cuda_allocator<uint32_t>().allocate(1);
-    std::cout << "device_bump_allocator allocated : " << max_size_ * sizeof(T) / (1ull << 30)
-              << " GiBs" << std::endl;
     cuda_try(cudaMemset(d_slab_count_, 0x00, sizeof(uint32_t)));
 
     // construct shared pointers
