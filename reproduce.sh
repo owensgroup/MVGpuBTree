@@ -1,4 +1,6 @@
 #!/bin/bash
+mkdir -p results
+
 cd build
 
 source ../scripts/bench_blink_vs_versioned.sh | tee -a ../results/bench_blink_vs_versioned.log
