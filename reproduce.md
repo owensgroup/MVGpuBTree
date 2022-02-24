@@ -88,7 +88,7 @@ cd build
 #### B-Tree vs. versioned B-Tree (ViB-Tree and VOB-Tree) (Figure 2)
 ~30 mins [^1]
 ```bash
-source ../scripts/bench_concurrent_insert_range_memory.sh | tee -a ../results/bench_concurrent_insert_range_memory.log
+source ../scripts/bench_blink_vs_versioned.sh | tee -a ../results/bench_blink_vs_versioned.log
 ```
 #### Concurrent insertion and range query benchmark (Figure 3 and Table 1)
 ~3 hours and 30 minutes [^1]
@@ -129,8 +129,8 @@ mkdir -p $output_dir                        # Creating results directory
 min_rate=0                                  # Y-axis minimum for Figures 2 (insert rate) and 3
 max_rate=300                                # Y-axis maximum for Figures 2 (insert rate) and 3
 
-min_erase_find=250                          # Y-axis minimum for Figure 4
-max_erase_find=450                          # Y-axis maximum for Figure 4
+min_erase_find=200                          # Y-axis minimum for Figure 4
+max_erase_find=500                          # Y-axis maximum for Figure 4
 
 min_find=1300                               # Y-axis minimum for Figure 2 (find rate)
 max_find=2200                               # Y-axis maximum for Figure 2 (find rate)
@@ -196,7 +196,7 @@ plot_concurrent_insert_range_reclamation_stats.txt      # Empty log file
 In addition to the unit tests, we provide additional extensive validation. All scripts contain a flag to turn validation on. Setting `validate_results` or `validate` to true will validate the query results. However, validation is relatively slow (especially for range query benchmark) as it performs all operations serially on the CPU. Additional CPU memory will be required (~30 GiBs). GPU memory usage can go up to 30 GiBs. We recommend running single experiments and not the entire benchmarking script to test validation. Most memory usage is used for range query results; therefore, reducing the range query size will significantly reduce memory usage.
 
 
-For convenience, a script that performs tests is provided. The script took ~5 hours on our system. From the `MVGpuBTre` top-level directory, run the following script:
+For convenience, a script that performs tests is provided. The script took ~6.5 hours on our system. From the `MVGpuBTre` top-level directory, run the following script:
 ```bash
 source scripts/validation_tests.sh
 ```
