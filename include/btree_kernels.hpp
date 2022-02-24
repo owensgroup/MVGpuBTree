@@ -75,13 +75,13 @@ __global__ void concurrent_find_erase_kernel_versioned(const key_type* find_keys
 
   if (block_id < erasure_blocks) {  // first blocks will do insertion
 
-    auto key      = btree::invalid_key;
-    bool to_erase = false;
-
     // iterate to perform insertions
     for (auto thread_id = threadIdx.x + block_id * block_size;
          thread_id < required_erasure_blocks * block_size;
          thread_id += (block_size * erasure_blocks)) {
+      auto key      = btree::invalid_key;
+      bool to_erase = false;
+
       if (thread_id < num_erasures) {
         key      = erase_keys[thread_id];
         to_erase = true;
@@ -106,14 +106,14 @@ __global__ void concurrent_find_erase_kernel_versioned(const key_type* find_keys
   } else {                       // remaining blocks will do rq
     block_id -= erasure_blocks;  // first block starts at zero
 
-    auto key     = btree::invalid_key;
-    auto result  = btree::invalid_key;
-    bool to_find = false;
-
     // iterate to perform finds
     for (auto thread_id = threadIdx.x + block_id * block_size;
          thread_id < required_find_blocks * block_size;
          thread_id += (block_size * find_blocks)) {
+      auto key     = btree::invalid_key;
+      auto result  = btree::invalid_key;
+      bool to_find = false;
+
       if (thread_id < num_finds) {
         key     = find_keys[thread_id];
         to_find = true;
@@ -197,14 +197,14 @@ __global__ void concurrent_insert_range_kernel(const key_type* keys,
 
   if (block_id < insertion_blocks) {  // first blocks will do insertion
 
-    auto key       = btree::invalid_key;
-    auto value     = btree::invalid_value;
-    bool to_insert = false;
-
     // iterate to perform insertions
     for (auto thread_id = threadIdx.x + block_id * block_size;
          thread_id < required_insertion_blocks * block_size;
          thread_id += (block_size * insertion_blocks)) {
+      auto key       = btree::invalid_key;
+      auto value     = btree::invalid_value;
+      bool to_insert = false;
+
       if (thread_id < num_insertions) {
         key       = keys[thread_id];
         value     = values[thread_id];
@@ -223,7 +223,7 @@ __global__ void concurrent_insert_range_kernel(const key_type* keys,
       auto work_queue        = tile.ballot(to_insert);
       reclaimer.leave_qstate(block_wide_tile, blockIdx.x, allocator, tree.allocator_);
 #ifdef DEBUG_QS_ENTER_EXIST
-      if (block_wide_tile.thread_rank() == 0) { printf("blk %i lqs\n", blockIdx.x); }
+      if (block_wide_tile.thread_rank() == 0) { printf("insert blk %i lqs\n", blockIdx.x); }
 #endif
       while (work_queue) {
         auto cur_rank  = __ffs(work_queue) - 1;
@@ -240,20 +240,19 @@ __global__ void concurrent_insert_range_kernel(const key_type* keys,
       }  // end while
       reclaimer.enter_qstate(block_wide_tile, blockIdx.x);
 #ifdef DEBUG_QS_ENTER_EXIST
-      if (block_wide_tile.thread_rank() == 0) { printf("blk %i eqs\n", blockIdx.x); }
+      if (block_wide_tile.thread_rank() == 0) { printf("insert blk %i eqs\n", blockIdx.x); }
 #endif
     }
   } else {                         // remaining blocks will do rq
     block_id -= insertion_blocks;  // first block starts at zero
 
-    auto lower_bound = btree::invalid_key;
-    auto upper_bound = btree::invalid_key;
-    bool to_find     = false;
-
     // iterate to perform rqs
     for (auto thread_id = threadIdx.x + block_id * block_size;
          thread_id < required_ranges_blocks * block_size;
          thread_id += (block_size * ranges_blocks)) {
+      auto lower_bound = btree::invalid_key;
+      auto upper_bound = btree::invalid_key;
+      bool to_find     = false;
       if (thread_id < num_ranges) {
         lower_bound = lower_bounds[thread_id];
         upper_bound = upper_bounds[thread_id];
@@ -277,9 +276,9 @@ __global__ void concurrent_insert_range_kernel(const key_type* keys,
 
       reclaimer.leave_qstate(block_wide_tile, blockIdx.x, allocator, tree.allocator_);
 #ifdef DEBUG_QS_ENTER_EXIST
-      if (block_wide_tile.thread_rank() == 0) { printf("blk %i lqs\n", blockIdx.x); }
+      if (block_wide_tile.thread_rank() == 0) { printf("query blk %i lqs\n", blockIdx.x); }
 #endif
-      if (to_find) { timestamp = tree.take_snapshot(tile); }
+      if (work_queue) { timestamp = tree.take_snapshot(tile); }
       while (work_queue) {
         auto cur_rank        = __ffs(work_queue) - 1;
         auto cur_lower_bound = tile.shfl(lower_bound, cur_rank);
@@ -300,7 +299,7 @@ __global__ void concurrent_insert_range_kernel(const key_type* keys,
       }  // end while
       reclaimer.enter_qstate(block_wide_tile, blockIdx.x);
 #ifdef DEBUG_QS_ENTER_EXIST
-      if (block_wide_tile.thread_rank() == 0) { printf("blk %i eqs\n", blockIdx.x); }
+      if (block_wide_tile.thread_rank() == 0) { printf("query blk %i eqs\n", blockIdx.x); }
 #endif
     }
   }
@@ -411,10 +410,6 @@ __global__ void insert_out_of_place_kernel(const key_type* keys,
   unsigned insertion_blocks          = gridDim.x;
   unsigned required_insertion_blocks = (num_insertions + block_size - 1) / block_size;
 
-  auto key       = btree::invalid_key;
-  auto value     = btree::invalid_value;
-  bool to_insert = false;
-
   using allocator_type = typename btree::device_allocator_context_type;
   allocator_type allocator{tree.allocator_, tile};
 
@@ -438,6 +433,10 @@ __global__ void insert_out_of_place_kernel(const key_type* keys,
   for (auto thread_id = threadIdx.x + block_id * block_size;
        thread_id < required_insertion_blocks * block_size;
        thread_id += (block_size * insertion_blocks)) {
+    auto key       = btree::invalid_key;
+    auto value     = btree::invalid_value;
+    bool to_insert = false;
+
     if (thread_id < num_insertions) {
       key       = keys[thread_id];
       value     = values[thread_id];
@@ -703,13 +702,12 @@ __global__ void concurrent_find_erase_kernel_blink(const key_type* find_keys,
 
   if (block_id < erasure_blocks) {  // first blocks will do insertion
 
-    auto key      = btree::invalid_key;
-    bool to_erase = false;
-
     // iterate to perform insertions
     for (auto thread_id = threadIdx.x + block_id * block_size;
          thread_id < required_erasure_blocks * block_size;
          thread_id += (block_size * erasure_blocks)) {
+      auto key      = btree::invalid_key;
+      bool to_erase = false;
       if (thread_id < num_erasures) {
         key      = erase_keys[thread_id];
         to_erase = true;
@@ -730,14 +728,13 @@ __global__ void concurrent_find_erase_kernel_blink(const key_type* find_keys,
   } else {                       // remaining blocks will do rq
     block_id -= erasure_blocks;  // first block starts at zero
 
-    auto key     = btree::invalid_key;
-    auto result  = btree::invalid_key;
-    bool to_find = false;
-
     // iterate to perform finds
     for (auto thread_id = threadIdx.x + block_id * block_size;
          thread_id < required_find_blocks * block_size;
          thread_id += (block_size * find_blocks)) {
+      auto key     = btree::invalid_key;
+      auto result  = btree::invalid_key;
+      bool to_find = false;
       if (thread_id < num_finds) {
         key     = find_keys[thread_id];
         to_find = true;
@@ -805,14 +802,13 @@ __global__ void concurrent_insert_range_kernel_blink(const key_type* keys,
 
   if (block_id < insertion_blocks) {  // first blocks will do insertion
 
-    auto key       = btree::invalid_key;
-    auto value     = btree::invalid_value;
-    bool to_insert = false;
-
     // iterate to perform insertions
     for (auto thread_id = threadIdx.x + block_id * block_size;
          thread_id < required_insertion_blocks * block_size;
          thread_id += (block_size * insertion_blocks)) {
+      auto key       = btree::invalid_key;
+      auto value     = btree::invalid_value;
+      bool to_insert = false;
       if (thread_id < num_insertions) {
         key       = keys[thread_id];
         value     = values[thread_id];
@@ -837,14 +833,14 @@ __global__ void concurrent_insert_range_kernel_blink(const key_type* keys,
   } else {                         // remaining blocks will do rq
     block_id -= insertion_blocks;  // first block starts at zero
 
-    auto lower_bound = btree::invalid_key;
-    auto upper_bound = btree::invalid_key;
-    bool to_find     = false;
-
     // iterate to perform rqs
     for (auto thread_id = threadIdx.x + block_id * block_size;
          thread_id < required_ranges_blocks * block_size;
          thread_id += (block_size * ranges_blocks)) {
+      auto lower_bound = btree::invalid_key;
+      auto upper_bound = btree::invalid_key;
+      bool to_find     = false;
+
       if (thread_id < num_ranges) {
         lower_bound = lower_bounds[thread_id];
         upper_bound = upper_bounds[thread_id];
