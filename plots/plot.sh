@@ -29,8 +29,8 @@ do
     # min_rate=0
     # max_rate=300
 
-    # min_erase_find=250
-    # max_erase_find=450
+    # min_erase_find=200
+    # max_erase_find=500
 
     # Figure 2
     exec_name=plot_blink_vs_versioned
