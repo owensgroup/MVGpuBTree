@@ -19,6 +19,7 @@ For reference, the repository contains archived results from our paper ([Figures
 To plot the result, you need a python 3.9 or higher with the following libraries installed:
 * `matplotlib`
 * `pandas`
+* `scipy`
 
 Refer to [Python guides](https://docs.python-guide.org/starting/install3/linux/) for instructions on how to install Python and its packages.
 ### Building
