@@ -16,7 +16,7 @@ For reference, the repository contains archived results from our paper ([Figures
 * CMake 3.8 or later
 * Linux OS
 
-To plot the result, you need a python 3.9 or higher with the following libraries installed:
+To plot the result, you need a python 3.9.7 or higher with the following libraries installed:
 * `matplotlib`
 * `pandas`
 * `scipy`
