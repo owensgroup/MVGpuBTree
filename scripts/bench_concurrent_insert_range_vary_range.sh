@@ -13,7 +13,7 @@ mkdir -p output_dir
 additional_args="--validate-result=false --num-experiments=20"
 
 update_ratios=(0.50)
-initial_sizes=(1'000'100 40'000'000)
+initial_sizes=(100000 1'000'100 40'000'000)
 num_concurrent_ops=(5'000'000)
 for num_ops in "${num_concurrent_ops[@]}"
 do
