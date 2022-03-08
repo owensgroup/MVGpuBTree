@@ -34,7 +34,3 @@ To reproduce the results, follow the following [steps](reproduce.md). If you fin
 
 ## Questions and bug report
 Please create an issue. We will welcome any contributions that improve the usability and quality of our repository.
-
-## Bibtex
-```
-```
