@@ -13,6 +13,10 @@ For more information, please check our paper:
 [**A GPU Multiversion B-Tree**]()<br>
 *[Muhammad A. Awad](https://maawad.github.io/), [Serban D. Porumbescu](https://web.cs.ucdavis.edu/~porumbes/), and [John D. Owens](https://www.ece.ucdavis.edu/~jowens/)*
 
+The repository also contains:
+1. [An implementation of our epoch-based memory reclamation strategy](https://github.com/owensgroup/MVGpuBTree/blob/main/include/memory_reclaimer.hpp)
+2. [SlabAlloc memory allocator redesigned to allow building more complex allocators via composition](https://github.com/owensgroup/MVGpuBTree/blob/main/include/slab_alloc.hpp)
+3. [Improved implementation of our B-Tree (reference B-Tree that doesn't support snapshots)](https://github.com/owensgroup/MVGpuBTree/blob/main/include/gpu_blink_tree.hpp).
 
 
 
