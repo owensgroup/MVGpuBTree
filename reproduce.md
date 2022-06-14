@@ -66,12 +66,15 @@ insertion_rq_rates_slab40.pdf           # Rates for operations (insert and RQ) o
 insertion_rq_rates_slab40.svg           # Same as above in svg format
 plot_concurrent_insert_range.txt        # Tabular summary of the concurrent insert RQ results
 
-# Figure 4 and Table 2
+# Figure 4
+
+
+# Figure 5 and Table 2
 erase_find_rates_slab45.pdf             # Rates for operations (find and erase) on an initial tree size of 45 million keys
 erase_find_rates_slab45.svg             # Same as above in svg format
 plot_concurrent_erase_find.txt          # Tabular summary of the concurrent find erase results
 
-# Figure 5
+# Figure 6
 insertion_find_memory_45m_45m_50_16_slab.pdf            # Figure 5.a
 insertion_find_memory_45m_45m_50_16_slab.svg            # Same as above in svg format
 insertion_find_ratio_memory_45m_45m_50_16_slab.pdf      # Figure 5.b
@@ -165,7 +168,7 @@ plot_concurrent_insert_range.txt        # Tabular summary of the concurrent inse
 ```
 
 
-#### Concurrent insertion and erase benchmark (Figure 4 and Table 2)
+#### Concurrent insertion and erase benchmark (Figure 5 and Table 2)
 
 ```bash
 exec_name=plot_concurrent_erase_find
@@ -179,7 +182,7 @@ erase_find_rates_slab45.svg             # Same as above in svg format
 plot_concurrent_erase_find.txt          # Tabular summary of the concurrent find erase results
 ```
 
-#### Memory reclamation benchmark (Figure 5)
+#### Memory reclamation benchmark (Figure 6)
 ```bash
 exec_name=plot_concurrent_insert_range_reclamation_stats
 python ./${exec_name}.py -d ${input_dir} -od $output_dir &> ${output_dir}/${exec_name}.txt
