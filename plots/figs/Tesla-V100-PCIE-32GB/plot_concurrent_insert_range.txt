@@ -1,0 +1,14 @@
+Reading results from:  ../results/Tesla-V100-PCIE-32GB
+                          |  BLink          | VBTree  
+1Mkeys_8RQ_5alpha         |  212.932        | 233.537 
+1Mkeys_8RQ_50alpha        |  211.936        | 128.211 
+1Mkeys_8RQ_90alpha        |  219.688        | 95.073  
+1Mkeys_32RQ_5alpha        |  221.691        | 227.793 
+1Mkeys_32RQ_50alpha       |  210.405        | 120.956 
+1Mkeys_32RQ_90alpha       |  213.406        | 93.199  
+40Mkeys_8RQ_5alpha        |  228.694        | 248.86  
+40Mkeys_8RQ_50alpha       |  220.186        | 127.256 
+40Mkeys_8RQ_90alpha       |  222.729        | 95.391  
+40Mkeys_32RQ_5alpha       |  240.13         | 214.679 
+40Mkeys_32RQ_50alpha      |  213.199        | 117.642 
+40Mkeys_32RQ_90alpha      |  220.329        | 92.154  

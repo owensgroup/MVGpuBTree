@@ -23,7 +23,7 @@ def plot_rates(results_dir, output_dir, memory_limits, fname, spacing=[1, 50]):
     df = pd.read_csv(results_dir + subdir + fname + '.csv')
     dfs.append(df)
 
-    svg_name = 'insertion_find_' + fname
+    svg_name = 'insertion_vary_rq_' + fname
     # allocator_name = 'bump'
     allocator_name = 'slab'
     svg_name = svg_name + '_' + allocator_name

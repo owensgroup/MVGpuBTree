@@ -1,0 +1,4 @@
+Reading results from:  ../results/Tesla-V100-PCIE-32GB
+B-Tree_slab               |  240.065        | 1512.964
+ViB-Tree_slab             |  216.512        | 1453.697
+VoB-Tree_slab             |  94.605         | 1549.977
