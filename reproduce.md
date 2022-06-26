@@ -67,7 +67,10 @@ insertion_rq_rates_slab40.svg           # Same as above in svg format
 plot_concurrent_insert_range.txt        # Tabular summary of the concurrent insert RQ results
 
 # Figure 4
-
+insertion_vary_rq_rates_initial0M_update50_num_ops5_slab.pdf    # Rates of operations using 1 million keys initial tree size and variable range length
+insertion_vary_rq_rates_initial0M_update50_num_ops5_slab.svg    # Same as above in svg format
+insertion_vary_rq_rates_initial40M_update50_num_ops5_slab.pdf   # Rates of operations using 50 million keys initial tree size and variable range length
+insertion_vary_rq_rates_initial40M_update50_num_ops5_slab.svg   # Same as above in svg format
 
 # Figure 5 and Table 2
 erase_find_rates_slab45.pdf             # Rates for operations (find and erase) on an initial tree size of 45 million keys
@@ -99,13 +102,20 @@ source ../scripts/bench_blink_vs_versioned.sh | tee -a ../results/bench_blink_vs
 ```bash
 source ../scripts/bench_concurrent_insert_range.sh | tee -a ../results/bench_concurrent_insert_range.log
 ```
-#### Concurrent insertion and erase benchmark (Figure 4 and Table 2)
+
+#### Concurrent insertion and variable range query benchmark (Figure 4)
+
+```bash
+source ../scripts/bench_concurrent_insert_range_vary_range.sh | tee -a ../results/bench_concurrent_insert_range_vary_range.log
+```
+
+#### Concurrent insertion and erase benchmark (Figure 5 and Table 2)
 ~ 1 hour [^1]
 ```bash
 source ../scripts/bench_concurrent_erase_find.sh | tee -a ../results/bench_concurrent_erase_find.log
 ```
 
-#### Memory reclamation benchmark (Figure 5)
+#### Memory reclamation benchmark (Figure 6)
 ~ 1 minute [^1]
 
 ```bash
