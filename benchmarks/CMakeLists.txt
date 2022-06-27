@@ -20,6 +20,11 @@ set_target_properties(concurrent_insert_range_bench PROPERTIES
 # target_compile_options(concurrent_insert_range_bench PRIVATE ${OpenMP_CXX_FLAGS})
 target_link_libraries(concurrent_insert_range_bench PRIVATE gpu_btrees)
 
+add_executable(concurrent_insert_range_variable_range_bench concurrent_insert_range_variable_range_bench.cu)
+set_target_properties(concurrent_insert_range_variable_range_bench PROPERTIES
+								FOLDER "benchmarks")
+target_link_libraries(concurrent_insert_range_variable_range_bench PRIVATE gpu_btrees)
+
 add_executable(concurrent_erase_find_bench concurrent_erase_find_bench.cu)
 set_target_properties(concurrent_erase_find_bench PROPERTIES
 								FOLDER "benchmarks")

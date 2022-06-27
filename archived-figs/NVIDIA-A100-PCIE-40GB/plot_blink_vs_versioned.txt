@@ -1,0 +1,4 @@
+Reading results from:  ../results/NVIDIA-A100-PCIE-40GB
+B-Tree_slab               |  278.729        | 2043.453
+ViB-Tree_slab             |  258.271        | 1758.828
+VoB-Tree_slab             |  200.939        | 1815.596
