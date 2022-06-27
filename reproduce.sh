@@ -10,3 +10,6 @@ source ../scripts/bench_concurrent_insert_range_memory.sh | tee -a ../results/be
 source ../scripts/bench_concurrent_insert_range_vary_range.sh | tee -a ../results/bench_concurrent_insert_range_vary_range.log
 
 cd ..
+
+#srun -p wario --gpus=1 reproduce.sh
+#srun -p bowser --gpus=1 reproduce.sh

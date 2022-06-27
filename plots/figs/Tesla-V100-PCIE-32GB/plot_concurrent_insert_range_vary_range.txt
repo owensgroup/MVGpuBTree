@@ -1,1 +1,0 @@
-Reading results from:  ../results/Tesla-V100-PCIE-32GB

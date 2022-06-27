@@ -1,0 +1,5 @@
+Reading results from:  ../results/NVIDIA-A100-PCIE-40GB
+                          |  BLink          | VBTree  
+45Mkeys_5alpha            |  626.957        | 485.639 
+45Mkeys_50alpha           |  589.729        | 445.435 
+45Mkeys_90alpha           |  556.949        | 456.27  

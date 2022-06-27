@@ -67,8 +67,8 @@ insertion_rq_rates_slab40.svg           # Same as above in svg format
 plot_concurrent_insert_range.txt        # Tabular summary of the concurrent insert RQ results
 
 # Figure 4
-insertion_vary_rq_rates_initial0M_update50_num_ops5_slab.pdf    # Rates of operations using 1 million keys initial tree size and variable range length
-insertion_vary_rq_rates_initial0M_update50_num_ops5_slab.svg    # Same as above in svg format
+insertion_vary_rq_rates_initial1M_update50_num_ops5_slab.pdf    # Rates of operations using 1 million keys initial tree size and variable range length
+insertion_vary_rq_rates_initial1M_update50_num_ops5_slab.svg    # Same as above in svg format
 insertion_vary_rq_rates_initial40M_update50_num_ops5_slab.pdf   # Rates of operations using 50 million keys initial tree size and variable range length
 insertion_vary_rq_rates_initial40M_update50_num_ops5_slab.svg   # Same as above in svg format
 
@@ -83,6 +83,11 @@ insertion_find_memory_45m_45m_50_16_slab.svg            # Same as above in svg f
 insertion_find_ratio_memory_45m_45m_50_16_slab.pdf      # Figure 5.b
 insertion_find_ratio_memory_45m_45m_50_16_slab.svg      # Same as above in svg format
 plot_concurrent_insert_range_reclamation_stats.txt      # Empty log file
+
+
+# Not included in paper
+insertion_vary_rq_rates_initial0M_update50_num_ops5_slab.pdf    # Rates of operations using 500 thousands keys initial tree size and variable range length
+insertion_vary_rq_rates_initial0M_update50_num_ops5_slab.svg    # Same as above in svg format
 ```
 
 ## Running one benchmark at a time
