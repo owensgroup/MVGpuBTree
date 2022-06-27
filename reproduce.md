@@ -85,7 +85,7 @@ insertion_find_ratio_memory_45m_45m_50_16_slab.svg      # Same as above in svg f
 plot_concurrent_insert_range_reclamation_stats.txt      # Empty log file
 
 
-# Not included in paper
+# Not included in the paper
 insertion_vary_rq_rates_initial0M_update50_num_ops5_slab.pdf    # Rates of operations using 500 thousands keys initial tree size and variable range length
 insertion_vary_rq_rates_initial0M_update50_num_ops5_slab.svg    # Same as above in svg format
 ```
