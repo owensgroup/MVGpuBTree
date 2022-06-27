@@ -38,3 +38,18 @@ To reproduce the results, follow the following [steps](reproduce.md). If you fin
 
 ## Questions and bug report
 Please create an issue. We will welcome any contributions that improve the usability and quality of our repository.
+
+## BibTeX
+```bibtex
+@inproceedings{Awad:2022:AGM,
+  author = {Muhammad A. Awad and Serban D. Porumbescu and John
+                  D. Owens},
+  title = {A {GPU} Multiversion {B}-Tree},
+  booktitle = {Proceedings of the International Conference on Parallel
+                  Architectures and Compilation Techniques},
+  series = {PACT 2022},
+  year = 2022,
+  month = oct,
+  code = {https://github.com/owensgroup/MVGpuBTree}
+}
+```
