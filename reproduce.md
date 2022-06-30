@@ -159,8 +159,9 @@ max_find=2200                               # Y-axis maximum for Figure 2 (find 
 ```bash
 exec_name=plot_blink_vs_versioned
 python ./${exec_name}.py -d ${input_dir} -od $output_dir -mf ${min_find} -xf ${max_find} -mi ${min_rate} -xi ${max_rate}&> ${output_dir}/${exec_name}.txt
-cd $output_dir
+
 # results
+cd $output_dir
 ls
 insertion_find_rates_slab.pdf           # Rates for insertion and point query for B-Tree vs. VBTree
 insertion_find_rates_slab.svg           # Same as above in svg format
@@ -171,8 +172,8 @@ plot_blink_vs_versioned.txt             # Tabular summary of the  B-Tree vs. VBT
 exec_name=plot_concurrent_insert_range
 python ./${exec_name}.py -d ${input_dir} -od $output_dir -mf ${min_rate} -xf ${max_rate}&> ${output_dir}/${exec_name}.txt
 
-cd $output_dir
 # results
+cd $output_dir
 ls
 insertion_rq_rates_slab1.pdf            # Rates for operations on an initial tree size of 1 million keys
 insertion_rq_rates_slab1.svg            # Same as above in svg format
@@ -182,15 +183,28 @@ plot_concurrent_insert_range.txt        # Tabular summary of the concurrent inse
 
 ```
 
+#### Concurrent insertion and variable range query length benchmark (Figure 4)
+```bash
+exec_name=plot_concurrent_insert_range_vary_range
+python ./${exec_name}.py -d ${input_dir} -od $output_dir &> ${output_dir}/${exec_name}.txt
+
+# Results
+cd $output_dir
+ls
+insertion_vary_rq_rates_initial1M_update50_num_ops5_slab.pdf    # Rates of operations using 1 million keys initial tree size and variable range length
+insertion_vary_rq_rates_initial1M_update50_num_ops5_slab.svg    # Same as above in svg format
+insertion_vary_rq_rates_initial40M_update50_num_ops5_slab.pdf   # Rates of operations using 50 million keys initial tree size and variable range length
+insertion_vary_rq_rates_initial40M_update50_num_ops5_slab.svg   # Same as above in svg format
+```
 
 #### Concurrent insertion and erase benchmark (Figure 5 and Table 2)
 
 ```bash
 exec_name=plot_concurrent_erase_find
 python ./${exec_name}.py -d ${input_dir} -od $output_dir -mf $min_erase_find -xf $max_erase_find&> ${output_dir}/${exec_name}.txt
-cd $output_dir
 
 # Results
+cd $output_dir
 ls
 erase_find_rates_slab45.pdf             # Rates for operations on an initial tree size of 45 million keys
 erase_find_rates_slab45.svg             # Same as above in svg format
@@ -201,6 +215,8 @@ plot_concurrent_erase_find.txt          # Tabular summary of the concurrent find
 ```bash
 exec_name=plot_concurrent_insert_range_reclamation_stats
 python ./${exec_name}.py -d ${input_dir} -od $output_dir &> ${output_dir}/${exec_name}.txt
+
+# Results
 cd $output_dir
 ls
 insertion_find_memory_45m_45m_50_16_slab.pdf            # Figure 5.a
