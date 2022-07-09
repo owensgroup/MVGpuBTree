@@ -19,6 +19,9 @@
 
 #include <cooperative_groups.h>
 #include <cuda_runtime.h>
+#include <cuda/atomic>
+
+
 #include <stdio.h>
 #include <btree_kernels.hpp>
 #include <cstddef>
@@ -31,6 +34,7 @@
 #include <queue>
 #include <sstream>
 #include <type_traits>
+
 
 #include <device_bump_allocator.hpp>
 #include <slab_alloc.hpp>
@@ -61,22 +65,23 @@
 namespace GpuBTree {
 
 template <typename Key,
-          typename Value,
+          typename T,
           int B              = 16,
-          typename Allocator = device_bump_allocator<node_type<Key, Value, B>>>
+          cuda::thread_scope Scope = cuda::thread_scope_device,
+          typename Allocator = device_bump_allocator<node_type<Key, T, B>>>
 struct gpu_blink_tree {
   using size_type                        = uint32_t;
   using key_type                         = Key;
-  using value_type                       = Value;
-  using pair_type                        = pair_type<Key, Value>;
+  using mapped_type                       = T;
+  using pair_type                        = pair_type<Key, T>;
   static auto constexpr branching_factor = B;
 
   static constexpr key_type invalid_key     = std::numeric_limits<key_type>::max();
-  static constexpr value_type invalid_value = std::numeric_limits<key_type>::max();
+  static constexpr mapped_type invalid_value = std::numeric_limits<key_type>::max();
 
   using allocator_type                = Allocator;
   using device_allocator_context_type = device_allocator_context<allocator_type>;
-  gpu_blink_tree() : allocator_{} {
+  gpu_blink_tree(Key sentinel_key, T sentinel_value, Allocator const& allocator = Allocator{}) : allocator_{allocator} {
     static_assert(sizeof(Key) == sizeof(Value),
                   "Size of key must be the same as the size of the value");
     allocate();
@@ -97,7 +102,7 @@ struct gpu_blink_tree {
                                const Key* lower_bound,
                                const Key* upper_bound,
                                const size_type num_ranges,
-                               pair_type* result,
+                               value_type* result,
                                const size_type average_range_length,
                                cudaStream_t stream = 0) {
     int block_size = 128;
@@ -109,7 +114,7 @@ struct gpu_blink_tree {
         kernels::concurrent_insert_range_kernel_blink<
             Key,
             Value,
-            pair_type,
+            value_type,
             size_type,
             typename std::remove_reference<decltype(*this)>::type>,
         block_size,
@@ -192,7 +197,7 @@ struct gpu_blink_tree {
   // [lower_bound, upper_bound)
   void range_query(const Key* lower_bound,
                    const Key* upper_bound,
-                   pair_type* result,
+                   value_type* result,
                    size_type* counts,
                    const size_type average_range_length,
                    const size_type num_keys,
@@ -226,13 +231,13 @@ struct gpu_blink_tree {
                                           DeviceAllocator& allocator,
                                           bool concurrent = false) {
     auto value              = std::numeric_limits<uint32_t>::max();
-    using node_type         = btree_node<pair_type, tile_type, branching_factor>;
+    using node_type         = btree_node<value_type, tile_type, branching_factor>;
     auto current_node_index = *d_root_index_;
     while (true) {
       node_type current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<value_type*>(allocator.address(allocator_, current_node_index)), tile);
       if (concurrent) {
-        current_node.load(cuda_memory_order::memory_order_relaxed);
+        current_node.load(cuda::memory_order_relaxed);
         traverse_side_links(current_node, current_node_index, key, tile, allocator);
       } else {
         current_node.load();
@@ -254,17 +259,17 @@ struct gpu_blink_tree {
                                                      const Key& upper_bound,
                                                      const tile_type& tile,
                                                      DeviceAllocator& allocator,
-                                                     pair_type* buffer = nullptr,
+                                                     value_type* buffer = nullptr,
                                                      bool concurrent   = false) /*const*/
   {
-    using node_type         = btree_node<pair_type, tile_type, branching_factor>;
+    using node_type         = btree_node<value_type, tile_type, branching_factor>;
     auto current_node_index = *d_root_index_;
     size_type count         = 0;
     while (true) {
       node_type current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<value_type*>(allocator.address(allocator_, current_node_index)), tile);
       if (concurrent) {
-        current_node.load(cuda_memory_order::memory_order_relaxed);
+        current_node.load(cuda::memory_order_relaxed);
         traverse_side_links(current_node, current_node_index, lower_bound, tile, allocator);
       } else {
         current_node.load();
@@ -282,10 +287,10 @@ struct gpu_blink_tree {
           if (keep_traversing) {
             current_node_index = current_node.get_sibling_index();
             current_node       = node_type(
-                reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)),
+                reinterpret_cast<value_type*>(allocator.address(allocator_, current_node_index)),
                 tile);
             if (concurrent) {
-              current_node.load(cuda_memory_order::memory_order_relaxed);
+              current_node.load(cuda::memory_order_relaxed);
             } else {
               current_node.load();
             }
@@ -305,13 +310,13 @@ struct gpu_blink_tree {
                                           const tile_type& tile,
                                           DeviceAllocator& allocator,
                                           bool concurrent = false) {
-    using node_type         = btree_node<pair_type, tile_type, branching_factor>;
+    using node_type         = btree_node<value_type, tile_type, branching_factor>;
     auto current_node_index = *d_root_index_;
     while (true) {
       node_type current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<value_type*>(allocator.address(allocator_, current_node_index)), tile);
       if (concurrent) {
-        current_node.load(cuda_memory_order::memory_order_relaxed);
+        current_node.load(cuda::memory_order_relaxed);
         traverse_side_links(current_node, current_node_index, key, tile, allocator);
       } else {
         current_node.load();
@@ -320,12 +325,12 @@ struct gpu_blink_tree {
       bool is_locked = current_node.is_locked();
       if (is_leaf) {
         current_node.lock();
-        current_node.load(cuda_memory_order::memory_order_relaxed);
+        current_node.load(cuda::memory_order_relaxed);
         if (concurrent) {
           traverse_side_links_with_locks(current_node, current_node_index, key, tile, allocator);
         }
         bool success = current_node.erase(key);
-        if (success) { current_node.store(cuda_memory_order::memory_order_relaxed); }
+        if (success) { current_node.store(cuda::memory_order_relaxed); }
         current_node.unlock();
         return success;
       } else {
@@ -340,16 +345,16 @@ struct gpu_blink_tree {
                                                           const Value& value,
                                                           const tile_type& tile,
                                                           DeviceAllocator& allocator) {
-    using node_type         = btree_node<pair_type, tile_type, branching_factor>;
+    using node_type         = btree_node<value_type, tile_type, branching_factor>;
     auto root_index         = *d_root_index_;
     auto current_node_index = root_index;
     auto parent_index       = root_index;
     bool keep_going         = true;
     do {
       auto current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<value_type*>(allocator.address(allocator_, current_node_index)), tile);
       current_node.lock();
-      current_node.load(cuda_memory_order::memory_order_relaxed);
+      current_node.load(cuda::memory_order_relaxed);
       bool is_intermediate = current_node.is_intermediate();
       bool is_full         = current_node.is_full();
       if (is_full) {
@@ -359,15 +364,15 @@ struct gpu_blink_tree {
           auto two_siblings =
               current_node.split_as_root(sibling_index0,  // left node
                                          sibling_index1,  // left right
-                                         reinterpret_cast<pair_type*>(allocator.address(
+                                         reinterpret_cast<value_type*>(allocator.address(
                                              allocator_, sibling_index0)),  // left ptr
-                                         reinterpret_cast<pair_type*>(allocator.address(
+                                         reinterpret_cast<value_type*>(allocator.address(
                                              allocator_, sibling_index1)),  // right ptr
                                          true);                             // children_are_locked
 
-          two_siblings.right.store(cuda_memory_order::memory_order_relaxed);
-          two_siblings.left.store(cuda_memory_order::memory_order_relaxed);
-          current_node.store(cuda_memory_order::memory_order_relaxed);  // root is still locked
+          two_siblings.right.store(cuda::memory_order_relaxed);
+          two_siblings.left.store(cuda::memory_order_relaxed);
+          current_node.store(cuda::memory_order_relaxed);  // root is still locked
           current_node.unlock();
 
           // go right or left?
@@ -385,13 +390,13 @@ struct gpu_blink_tree {
           auto split_result  = current_node.split(
               sibling_index,
               parent_index,
-              reinterpret_cast<pair_type*>(allocator.address(allocator_, sibling_index)),
-              reinterpret_cast<pair_type*>(allocator.address(allocator_, parent_index)),
+              reinterpret_cast<value_type*>(allocator.address(allocator_, sibling_index)),
+              reinterpret_cast<value_type*>(allocator.address(allocator_, parent_index)),
               true);
 
-          split_result.sibling.store(cuda_memory_order::memory_order_relaxed);
-          current_node.store(cuda_memory_order::memory_order_relaxed);
-          split_result.parent.store(cuda_memory_order::memory_order_relaxed);
+          split_result.sibling.store(cuda::memory_order_relaxed);
+          current_node.store(cuda::memory_order_relaxed);
+          split_result.parent.store(cuda::memory_order_relaxed);
           split_result.parent.unlock();
 
           if (go_right) {
@@ -406,7 +411,7 @@ struct gpu_blink_tree {
         // it is safe to release the parent's lock now
         if (parent_index != current_node_index) {
           auto parent_node = node_type(
-              reinterpret_cast<pair_type*>(allocator.address(allocator_, parent_index)), tile);
+              reinterpret_cast<value_type*>(allocator.address(allocator_, parent_index)), tile);
           parent_node.unlock();
         }
       }
@@ -415,7 +420,7 @@ struct gpu_blink_tree {
         current_node_index = current_node.find_next(key);
       } else {
         current_node.insert(key, value);
-        current_node.store(cuda_memory_order::memory_order_relaxed);
+        current_node.store(cuda::memory_order_relaxed);
         current_node.unlock();
 
         return true;
@@ -436,8 +441,8 @@ struct gpu_blink_tree {
     while (key >= node.get_high_key()) {
       node_index = node.get_sibling_index();
       node =
-          node_type(reinterpret_cast<pair_type*>(allocator.address(allocator_, node_index)), tile);
-      node.load(cuda_memory_order::memory_order_relaxed);
+          node_type(reinterpret_cast<value_type*>(allocator.address(allocator_, node_index)), tile);
+      node.load(cuda::memory_order_relaxed);
       traversed |= true;
     }
     return traversed;
@@ -455,11 +460,11 @@ struct gpu_blink_tree {
     while (key >= node.get_high_key()) {
       node_index = node.get_sibling_index();
       node_type sibling_node =
-          node_type(reinterpret_cast<pair_type*>(allocator.address(allocator_, node_index)), tile);
+          node_type(reinterpret_cast<value_type*>(allocator.address(allocator_, node_index)), tile);
       sibling_node.lock();
       node.unlock();
       node = sibling_node;
-      node.load(cuda_memory_order::memory_order_relaxed);
+      node.load(cuda::memory_order_relaxed);
       traversed |= true;
     }
     return traversed;
@@ -470,7 +475,7 @@ struct gpu_blink_tree {
                                                  const Value& value,
                                                  const tile_type& tile,
                                                  DeviceAllocator& allocator) {
-    using node_type         = btree_node<pair_type, tile_type, branching_factor>;
+    using node_type         = btree_node<value_type, tile_type, branching_factor>;
     auto root_index         = *d_root_index_;
     auto current_node_index = root_index;
     auto parent_index       = root_index;
@@ -478,8 +483,8 @@ struct gpu_blink_tree {
     bool link_traversed     = false;
     do {
       auto current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
-      current_node.load(cuda_memory_order::memory_order_relaxed);
+          reinterpret_cast<value_type*>(allocator.address(allocator_, current_node_index)), tile);
+      current_node.load(cuda::memory_order_relaxed);
 
       // if we restarted from root, we reset the traversal
       link_traversed = current_node_index == root_index ? false : link_traversed;
@@ -490,7 +495,7 @@ struct gpu_blink_tree {
       bool is_leaf = current_node.is_leaf();
       if (is_leaf) {
         if (current_node.try_lock()) {
-          current_node.load(cuda_memory_order::memory_order_relaxed);
+          current_node.load(cuda::memory_order_relaxed);
           bool parent_unknown =
               current_node_index == parent_index && current_node_index != root_index;
           bool traversal_required = key >= current_node.get_high_key();
@@ -510,10 +515,10 @@ struct gpu_blink_tree {
             if (is_leaf) { current_node.unlock(); }
             current_node_index = current_node.get_sibling_index();
             current_node       = node_type(
-                reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)),
+                reinterpret_cast<value_type*>(allocator.address(allocator_, current_node_index)),
                 tile);
             if (is_leaf) { current_node.lock(); }
-            current_node.load(cuda_memory_order::memory_order_relaxed);
+            current_node.load(cuda::memory_order_relaxed);
             is_leaf = current_node.is_leaf();
             // if the node is not a leaf anymore, we don't need the lock
             if (!is_leaf) { current_node.unlock(); }
@@ -540,7 +545,7 @@ struct gpu_blink_tree {
       // if is full, and not leaf we need to acquire the lock
       if (is_full && !is_leaf) {
         if (current_node.try_lock()) {
-          current_node.load(cuda_memory_order::memory_order_relaxed);
+          current_node.load(cuda::memory_order_relaxed);
           is_full = current_node.is_full();
           if (is_full) {
             bool traversal_required = key >= current_node.get_high_key();
@@ -575,9 +580,9 @@ struct gpu_blink_tree {
       // splitting an intermediate node
       if (is_full && (current_node_index != root_index)) {
         auto parent_node = node_type(
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, parent_index)), tile);
+            reinterpret_cast<value_type*>(allocator.address(allocator_, parent_index)), tile);
         parent_node.lock();
-        parent_node.load(cuda_memory_order::memory_order_relaxed);
+        parent_node.load(cuda::memory_order_relaxed);
         bool parent_is_full = parent_node.is_full();
 
         // make sure parent is not full
@@ -606,15 +611,15 @@ struct gpu_blink_tree {
         auto split_result = current_node.split(
             sibling_index,
             parent_index,
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, sibling_index)),
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, parent_index)),
+            reinterpret_cast<value_type*>(allocator.address(allocator_, sibling_index)),
+            reinterpret_cast<value_type*>(allocator.address(allocator_, parent_index)),
             true);
 
-        split_result.sibling.store(cuda_memory_order::memory_order_relaxed);
+        split_result.sibling.store(cuda::memory_order_relaxed);
         __threadfence();
-        current_node.store(cuda_memory_order::memory_order_relaxed);
+        current_node.store(cuda::memory_order_relaxed);
         __threadfence();
-        split_result.parent.store(cuda_memory_order::memory_order_relaxed);
+        split_result.parent.store(cuda::memory_order_relaxed);
         split_result.parent.unlock();
 
         if (go_right) {
@@ -633,19 +638,19 @@ struct gpu_blink_tree {
         auto two_siblings =
             current_node.split_as_root(sibling_index0,  // left node
                                        sibling_index1,  // left right
-                                       reinterpret_cast<pair_type*>(allocator.address(
+                                       reinterpret_cast<value_type*>(allocator.address(
                                            allocator_, sibling_index0)),  // left ptr
-                                       reinterpret_cast<pair_type*>(allocator.address(
+                                       reinterpret_cast<value_type*>(allocator.address(
                                            allocator_, sibling_index1)),  // right ptr
                                        true);                             // children_are_locked
 
         // write order here should be:
         // right node -> left node ->  parent
-        two_siblings.right.store(cuda_memory_order::memory_order_relaxed);
+        two_siblings.right.store(cuda::memory_order_relaxed);
         __threadfence();
-        two_siblings.left.store(cuda_memory_order::memory_order_relaxed);
+        two_siblings.left.store(cuda::memory_order_relaxed);
         __threadfence();
-        current_node.store(cuda_memory_order::memory_order_relaxed);  // root is still locked
+        current_node.store(cuda::memory_order_relaxed);  // root is still locked
         current_node.unlock();
 
         // go right or left?
@@ -666,7 +671,7 @@ struct gpu_blink_tree {
       is_leaf = current_node.is_leaf();
       if (is_leaf) {
         current_node.insert(key, value);
-        current_node.store(cuda_memory_order::memory_order_relaxed);
+        current_node.store(cuda::memory_order_relaxed);
         current_node.unlock();
         return true;
       } else {  // traverse
@@ -692,7 +697,7 @@ struct gpu_blink_tree {
     auto num_allocated_nodes = get_num_tree_node();
     // slab alloc currently doesn't have this implemented
     if (num_allocated_nodes == 0) { return false; }
-    h_btree_ = new pair_type[num_allocated_nodes * branching_factor];
+    h_btree_ = new value_type[num_allocated_nodes * branching_factor];
 
     std::size_t tree_size = num_allocated_nodes * branching_factor;
     tree_size *= (sizeof(Key) + sizeof(Value));
@@ -714,7 +719,7 @@ struct gpu_blink_tree {
     std::vector<size_type> level_nodes_ids;
     std::vector<std::vector<size_type>> levels_nodes_ids;
 
-    std::vector<pair_type> tree_pairs;
+    std::vector<value_type> tree_pairs;
     std::queue<size_type> queue;
 
     // Copied from node struct because we can't construct it on CPU
@@ -725,26 +730,26 @@ struct gpu_blink_tree {
     uint32_t leaf_bit_mask   = 1u << leaf_bit_offset;
     uint32_t metadata_lane   = branching_factor - 1;
 
-    auto is_locked_node = [&](pair_type pair) { return pair.second & lock_bit_mask; };
-    auto is_leaf_node   = [leaf_bit_mask](pair_type pair) { return pair.second & leaf_bit_mask; };
-    auto mask_metadata  = [leaf_bit_mask, lock_bit_mask](pair_type pair) {
+    auto is_locked_node = [&](value_type pair) { return pair.second & lock_bit_mask; };
+    auto is_leaf_node   = [leaf_bit_mask](value_type pair) { return pair.second & leaf_bit_mask; };
+    auto mask_metadata  = [leaf_bit_mask, lock_bit_mask](value_type pair) {
       auto mask = (~lock_bit_mask) & (~leaf_bit_mask);
-      return pair_type(pair.first, pair.second & mask);
+      return value_type(pair.first, pair.second & mask);
     };
-    auto tombstone_pair      = pair_type{0, 0};
-    auto invalid_pair        = pair_type{};
+    auto tombstone_pair      = value_type{0, 0};
+    auto invalid_pair        = value_type{};
     auto empty_metadata_pair = mask_metadata(invalid_pair);
 
     queue.push(0);
 
     while (!queue.empty()) {
-      pair_type* current = h_btree_ + queue.front() * branching_factor;
+      value_type* current = h_btree_ + queue.front() * branching_factor;
       num_nodes++;
       level_nodes_ids.push_back(queue.front());
       queue.pop();
       level_nodes++;
 
-      pair_type metadata = *(current + metadata_lane);
+      value_type metadata = *(current + metadata_lane);
       bool is_leaf       = is_leaf_node(metadata);
       bool is_locked     = is_locked_node(metadata);
 
@@ -788,7 +793,7 @@ struct gpu_blink_tree {
     for (uint32_t level_id = 0; level_id < levels_nodes_ids.size(); level_id++) {
       for (uint32_t node_id = 0; node_id < levels_nodes_ids[level_id].size(); node_id++) {
         uint32_t node_idx  = levels_nodes_ids[level_id][node_id];
-        pair_type metadata = (h_btree_ + node_idx * branching_factor)[metadata_lane];
+        value_type metadata = (h_btree_ + node_idx * branching_factor)[metadata_lane];
         metadata           = mask_metadata(metadata);
 
         key_type link_min  = metadata.first;
@@ -803,8 +808,8 @@ struct gpu_blink_tree {
           if (link_ptr != correct_ptr) {
             throw std::logic_error("Invalid link information at node");
           }
-          pair_type* neighbor_node = (h_btree_ + correct_ptr * branching_factor);
-          pair_type* cur_node      = (h_btree_ + node_idx * branching_factor);
+          value_type* neighbor_node = (h_btree_ + correct_ptr * branching_factor);
+          value_type* cur_node      = (h_btree_ + node_idx * branching_factor);
           for (uint32_t i = 0; i < branching_factor; i++) {
             auto cur_pair = (i == (branching_factor - 1)) ? mask_metadata(*cur_node) : *cur_node;
             auto neighbor_pair =
@@ -829,7 +834,7 @@ struct gpu_blink_tree {
 
     for (uint32_t key_id = 0; key_id < keys.size(); key_id++) {
       auto key           = sorted_keys[key_id];
-      auto expected_pair = pair_type{key, to_value(key)};
+      auto expected_pair = value_type{key, to_value(key)};
       auto found_pair    = tree_pairs[key_id];
       if (expected_pair != found_pair) { throw std::logic_error("Input pair mismatch tree pair"); }
     }
@@ -846,7 +851,7 @@ struct gpu_blink_tree {
   }
 
   void plot_node(std::stringstream& dot,
-                 pair_type* node,
+                 value_type* node,
                  size_type id,
                  const bool plot_links,
                  const bool plot_box_only = false) {
@@ -862,7 +867,7 @@ struct gpu_blink_tree {
       bool ptr_lane    = lane == (branching_factor - 1);
       bool ts_lane     = lane == (branching_factor - 2);
       key_type key     = node[lane].first;
-      value_type value = node[lane].second;
+      mapped_type value = node[lane].second;
 
       bool is_locked = node[branching_factor - 1].second & locked_bit_mask;
       bool is_leaf   = node[branching_factor - 1].second & leaf_bit_mask;
@@ -931,7 +936,7 @@ struct gpu_blink_tree {
 
   void plot_dot(std::string fname, const bool plot_links = true) {
     auto num_nodes = get_num_tree_node();
-    h_btree_       = new pair_type[num_nodes * branching_factor];
+    h_btree_       = new value_type[num_nodes * branching_factor];
     copy_tree_to_host(num_nodes * branching_factor * (sizeof(Key) + sizeof(Value)));
 
     std::stringstream dot;
@@ -961,7 +966,7 @@ struct gpu_blink_tree {
     // allocate
 
     auto num_nodes = get_num_tree_node();
-    h_btree_       = new pair_type[num_nodes * branching_factor];
+    h_btree_       = new value_type[num_nodes * branching_factor];
 
     copy_tree_to_host(num_nodes * branching_factor * (sizeof(Key) + sizeof(Value)));
     for (size_type node = 0; node < num_nodes; node++) {
@@ -1027,53 +1032,53 @@ struct gpu_blink_tree {
 
  private:
   template <typename key_type,
+            typename mapped_type,
             typename value_type,
-            typename pair_type,
             typename size_type,
             typename btree>
   friend __global__ void kernels::concurrent_insert_range_kernel_blink(const key_type*,
-                                                                       const value_type*,
+                                                                       const mapped_type*,
                                                                        const size_type,
                                                                        const key_type*,
                                                                        const key_type*,
                                                                        const size_type,
-                                                                       pair_type*,
+                                                                       value_type*,
                                                                        const size_type,
                                                                        btree);
 
-  template <typename key_type, typename value_type, typename size_type, typename btree>
+  template <typename key_type, typename mapped_type, typename size_type, typename btree>
   friend __global__ void kernels::concurrent_find_erase_kernel_blink(const key_type*,
-                                                                     value_type*,
+                                                                     mapped_type*,
                                                                      const size_type,
                                                                      const key_type*,
                                                                      const size_type,
                                                                      btree);
 
-  template <typename key_type, typename value_type, typename size_type, typename btree>
+  template <typename key_type, typename mapped_type, typename size_type, typename btree>
   friend __global__ void kernels::insert_kernel(const key_type*,
-                                                const value_type*,
+                                                const mapped_type*,
                                                 const size_type,
                                                 btree);
   template <typename btree>
   friend __global__ void kernels::initialize_kernel(btree);
 
-  template <typename key_type, typename value_type, typename size_type, typename btree>
+  template <typename key_type, typename mapped_type, typename size_type, typename btree>
   friend __global__ void kernels::find_kernel(const key_type*,
-                                              value_type*,
+                                              mapped_type*,
                                               const size_type,
                                               btree,
                                               const size_type,
                                               const bool);
-  template <typename key_type, typename value_type, typename size_type, typename btree>
+  template <typename key_type, typename mapped_type, typename size_type, typename btree>
   friend __global__ void kernels::find_kernel(const key_type*,
-                                              value_type*,
+                                              mapped_type*,
                                               const size_type,
                                               const btree,
                                               const bool);
-  template <typename key_type, typename pair_type, typename size_type, typename btree>
+  template <typename key_type, typename value_type, typename size_type, typename btree>
   friend __global__ void kernels::range_query_kernel(const key_type*,
                                                      const key_type*,
-                                                     pair_type*,
+                                                     value_type*,
                                                      const size_type,
                                                      const size_type,
                                                      btree,
@@ -1087,12 +1092,12 @@ struct gpu_blink_tree {
   DEVICE_QUALIFIER void allocate_root_node(const tile_type& tile, DeviceAllocator& allocator) {
     auto root_index = allocator.allocate(allocator_, 1, tile);
     *d_root_index_  = root_index;
-    using node_type = btree_node<pair_type, tile_type, branching_factor>;
+    using node_type = btree_node<value_type, tile_type, branching_factor>;
 
-    auto lane_pair = pair_type();
-    if (tile.thread_rank() == 0) { lane_pair = pair_type{0, 0}; }
+    auto lane_pair = value_type();
+    if (tile.thread_rank() == 0) { lane_pair = value_type{0, 0}; }
     auto root_node =
-        node_type(reinterpret_cast<pair_type*>(allocator.address(allocator_, root_index)),
+        node_type(reinterpret_cast<value_type*>(allocator.address(allocator_, root_index)),
                   tile,
                   lane_pair,
                   false,
@@ -1120,7 +1125,7 @@ struct gpu_blink_tree {
 
   size_type* d_snapshot_index_;
 
-  pair_type* h_btree_;
+  value_type* h_btree_;
   size_type* h_node_count_;
 
   size_type* d_root_index_;

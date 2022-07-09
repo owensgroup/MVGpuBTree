@@ -15,6 +15,9 @@
  */
 
 #pragma once
+#include <cuda/atomic>
+
+
 #include <cstdint>
 #include <macros.hpp>
 #include <memory_utils.hpp>
@@ -23,35 +26,47 @@
 //#define DEBUG_NODE
 template <typename pair_type, typename tile_type, int node_width = 16>
 struct btree_node {
-  using key_type                            = typename pair_type::key_type;
-  using value_type                          = typename pair_type::value_type;
+  using key_type                            = typename pair_type::first;
+  using mapped_type                          = typename pair_type::second;
   static constexpr key_type invalid_key     = std::numeric_limits<uint32_t>::max();
-  static constexpr value_type invalid_value = std::numeric_limits<uint32_t>::max();
+  static constexpr mapped_type invalid_value = std::numeric_limits<uint32_t>::max();
   using size_type                           = uint32_t;
   using unsigned_type =
       typename std::conditional<sizeof(key_type) == sizeof(uint32_t), uint32_t, uint64_t>::type;
   DEVICE_QUALIFIER btree_node(pair_type* ptr, const tile_type& tile)
-      : node_ptr_(ptr), tile_(tile), is_locked_(false) {}
+      : node_ptr_(ptr), atomic_node_ptr_{ptr}, tile_(tile), is_locked_(false) {}
   DEVICE_QUALIFIER btree_node(pair_type* ptr,
                               const tile_type& tile,
                               const pair_type pair,
                               bool is_locked,
                               bool is_intermediate)
       : node_ptr_(ptr)
+      , atomic_node_ptr_{ptr + tile.thread_rank()}
       , lane_pair_(pair)
       , tile_(tile)
       , is_locked_(is_locked)
       , is_intermediate_(is_intermediate) {}
 
-  DEVICE_QUALIFIER void load(cuda_memory_order order = cuda_memory_order::memory_order_weak) {
+  DEVICE_QUALIFIER void load() {
     lane_pair_       = cuda_memory<pair_type>::load(node_ptr_ + tile_.thread_rank(), order);
     is_intermediate_ = !(get_sibling_data() & leaf_bit_mask_);
     is_locked_       = (get_sibling_data() & lock_bit_mask_);
   }
-  DEVICE_QUALIFIER void store(cuda_memory_order order = cuda_memory_order::memory_order_weak) {
+  DEVICE_QUALIFIER void store() {
     cuda_memory<pair_type>::store(node_ptr_ + tile_.thread_rank(), lane_pair_, order);
     is_intermediate_ = !(get_sibling_data() & leaf_bit_mask_);
   }
+
+  DEVICE_QUALIFIER void load(cuda::memory_order order) {
+    lane_pair_      = atomic_node_ptr_.load(order);
+    is_intermediate_ = !(get_sibling_data() & leaf_bit_mask_);
+    is_locked_       = (get_sibling_data() & lock_bit_mask_);
+  }
+  DEVICE_QUALIFIER void store(cuda::memory_order  order) {
+    atomic_node_ptr_.store(lane_pair_, order);
+    is_intermediate_ = !(get_sibling_data() & leaf_bit_mask_);
+  }
+
   DEVICE_QUALIFIER void print() const {
     printf("node: %p, rank: %i, pair{%i, %i}\n",
            node_ptr_,
@@ -215,7 +230,7 @@ struct btree_node {
     return found_lane - 1;
   }
 
-  DEVICE_QUALIFIER int find_value_lane_in_node(const value_type& value) const {
+  DEVICE_QUALIFIER int find_value_lane_in_node(const mapped_type& value) const {
     bool is_valid_lane = tile_.thread_rank() != metadata_lane_;
     auto key_exist     = tile_.ballot(lane_pair_.second == value && is_valid_lane);
     auto found_lane    = __ffs(key_exist);
@@ -232,7 +247,7 @@ struct btree_node {
     return ptr_location == -1 ? false : true;
   }
 
-  DEVICE_QUALIFIER value_type get_key_value_from_node(const key_type& key) const {
+  DEVICE_QUALIFIER mapped_type get_key_value_from_node(const key_type& key) const {
     auto key_location = find_key_lane_in_node(key);
     return key_location == -1 ? std::numeric_limits<uint32_t>::max()
                               : get_value_from_lane(key_location);
@@ -245,11 +260,11 @@ struct btree_node {
     auto value = get_value_from_lane(location);
     return pair_type(key, value);
   }
-  DEVICE_QUALIFIER value_type get_value_from_lane(const int& location) const {
+  DEVICE_QUALIFIER mapped_type get_value_from_lane(const int& location) const {
     return tile_.shfl(lane_pair_.second, location);
   }
 
-  DEVICE_QUALIFIER bool insert(const key_type key, const value_type value) {
+  DEVICE_QUALIFIER bool insert(const key_type key, const mapped_type value) {
     // Debug: check if key is larger than high key
     auto high_key = get_high_key();
 #ifdef DEBUG_NODE
@@ -488,6 +503,7 @@ struct btree_node {
 
  private:
   pair_type* node_ptr_;
+  cuda::atomic_ref<pair_type> atomic_node_ptr_;
   pair_type lane_pair_;
   const tile_type tile_;
   // metadata_lane_ Maps to a pair of {high-key, [lock-bit][leaf-bit][ptr-30bits]}. This
