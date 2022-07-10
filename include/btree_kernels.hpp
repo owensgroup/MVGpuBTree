@@ -142,18 +142,14 @@ __global__ void concurrent_find_erase_kernel_versioned(const key_type* find_keys
   }
 }
 
-template <typename key_type,
-          typename value_type,
-          typename pair_type,
-          typename size_type,
-          typename btree>
+template <typename key_type, typename value_type, typename pair, typename size_type, typename btree>
 __global__ void concurrent_insert_range_kernel(const key_type* keys,
                                                const value_type* values,
                                                const size_type num_insertions,
                                                const key_type* lower_bounds,
                                                const key_type* upper_bounds,
                                                const size_type num_ranges,
-                                               pair_type* range_result,
+                                               pair* range_result,
                                                const size_type average_range_length,
                                                btree tree) {
   // cuda grid
@@ -305,10 +301,10 @@ __global__ void concurrent_insert_range_kernel(const key_type* keys,
   }
 }
 
-template <typename key_type, typename pair_type, typename size_type, typename btree>
+template <typename key_type, typename pair, typename size_type, typename btree>
 __global__ void range_query_kernel(const key_type* lower_bounds,
                                    const key_type* upper_bounds,
-                                   pair_type* range_result,
+                                   pair* range_result,
                                    const size_type average_range_length,
                                    const size_type keys_count,
                                    btree tree,
@@ -484,7 +480,7 @@ __global__ void find_kernel(const key_type* keys,
                             btree tree,
                             const size_type time_stamp,
                             bool concurrent = false) {
-  using pair_type = typename btree::pair_type;
+  using pair = typename btree::pair;
 
   auto thread_id = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -538,8 +534,8 @@ __global__ void find_kernel(const key_type* keys,
                             const size_type keys_count,
                             btree tree,
                             bool concurrent = false) {
-  using pair_type = typename btree::pair_type;
-  auto thread_id  = threadIdx.x + blockIdx.x * blockDim.x;
+  using pair     = typename btree::pair;
+  auto thread_id = threadIdx.x + blockIdx.x * blockDim.x;
 
   auto block = cg::this_thread_block();
   auto tile  = cg::tiled_partition<btree::branching_factor>(block);
@@ -572,10 +568,10 @@ __global__ void find_kernel(const key_type* keys,
 
   if (thread_id < keys_count) { values[thread_id] = value; }
 }
-template <typename key_type, typename pair_type, typename size_type, typename btree>
+template <typename key_type, typename pair, typename size_type, typename btree>
 __global__ void range_query_kernel(const key_type* lower_bounds,
                                    const key_type* upper_bounds,
-                                   pair_type* result,
+                                   pair* result,
                                    const size_type average_range_length,
                                    const size_type keys_count,
                                    btree tree,
@@ -630,7 +626,7 @@ __global__ void erase_kernel(const key_type* keys,
                              const size_type keys_count,
                              btree tree,
                              bool concurrent = false) {
-  using pair_type = typename btree::pair_type;
+  using pair = typename btree::pair;
 
   auto thread_id = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -759,18 +755,14 @@ __global__ void concurrent_find_erase_kernel_blink(const key_type* find_keys,
   }
 }
 
-template <typename key_type,
-          typename value_type,
-          typename pair_type,
-          typename size_type,
-          typename btree>
+template <typename key_type, typename value_type, typename pair, typename size_type, typename btree>
 __global__ void concurrent_insert_range_kernel_blink(const key_type* keys,
                                                      const value_type* values,
                                                      const size_type num_insertions,
                                                      const key_type* lower_bounds,
                                                      const key_type* upper_bounds,
                                                      const size_type num_ranges,
-                                                     pair_type* range_result,
+                                                     pair* range_result,
                                                      const size_type average_range_length,
                                                      btree tree) {
   // cuda grid

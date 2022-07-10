@@ -19,15 +19,15 @@ struct device_allocator_context {};
 #include <macros.hpp>
 
 // order matters
-#include <pair_type.hpp>
+#include <detail/pair.cuh>
 
 namespace GpuBTree {
 template <typename Key, typename Value, int b = 16>
 struct node_type {
-  using T = pair_type<Key, Value>;
+  using T = pair<Key, Value>;
   T node[b];
 };
 }  // namespace GpuBTree
 
 #include "gpu_blink_tree.hpp"
-#include "gpu_versioned_blink_tree.hpp"
+// #include "gpu_versioned_blink_tree.hpp"

@@ -15,26 +15,24 @@
  */
 
 #pragma once
-#define _CG_ABI_EXPERIMENTAL  // enable experimental CGs API
+#define _CG_ABI_EXPERIMENTAL
 
 #include <cooperative_groups.h>
 #include <cuda_runtime.h>
 #include <cuda/atomic>
 
-
 #include <stdio.h>
 #include <btree_kernels.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <detail/pair.cuh>
 #include <fstream>
 #include <ios>
 #include <iostream>
 #include <node.hpp>
-#include <pair_type.hpp>
 #include <queue>
 #include <sstream>
 #include <type_traits>
-
 
 #include <device_bump_allocator.hpp>
 #include <slab_alloc.hpp>
@@ -66,23 +64,21 @@ namespace GpuBTree {
 
 template <typename Key,
           typename T,
-          int B              = 16,
+          int B                    = 16,
           cuda::thread_scope Scope = cuda::thread_scope_device,
-          typename Allocator = device_bump_allocator<node_type<Key, T, B>>>
+          typename Allocator       = device_bump_allocator<node_type<Key, T, B>>>
 struct gpu_blink_tree {
   using size_type                        = uint32_t;
   using key_type                         = Key;
-  using mapped_type                       = T;
-  using pair_type                        = pair_type<Key, T>;
+  using mapped_type                      = T;
+  using value_type                       = pair<Key, T>;
   static auto constexpr branching_factor = B;
+  using allocator_type                   = Allocator;
+  using device_allocator_context_type    = device_allocator_context<allocator_type>;
 
-  static constexpr key_type invalid_key     = std::numeric_limits<key_type>::max();
-  static constexpr mapped_type invalid_value = std::numeric_limits<key_type>::max();
-
-  using allocator_type                = Allocator;
-  using device_allocator_context_type = device_allocator_context<allocator_type>;
-  gpu_blink_tree(Key sentinel_key, T sentinel_value, Allocator const& allocator = Allocator{}) : allocator_{allocator} {
-    static_assert(sizeof(Key) == sizeof(Value),
+  gpu_blink_tree(Key sentinel_key, T sentinel_value, Allocator const& allocator = Allocator{})
+      : allocator_{allocator}, sentinel_key_{sentinel_key}, sentinel_value_{sentinel_value_} {
+    static_assert(sizeof(Key) == sizeof(T),
                   "Size of key must be the same as the size of the value");
     allocate();
   }
@@ -91,13 +87,15 @@ struct gpu_blink_tree {
       , h_btree_(other.h_btree_)
       , h_node_count_(other.h_node_count_)
       , d_root_index_(other.d_root_index_)
-      , allocator_(other.allocator_) {}
+      , allocator_(other.allocator_)
+      , sentinel_key_(other.sentinel_key_)
+      , sentinel_value_(other.sentinel_value_) {}
 
   ~gpu_blink_tree() {}
 
   // host-side APIs
   void concurrent_insert_range(const Key* keys,
-                               const Value* values,
+                               const T* values,
                                const size_type num_insertion,
                                const Key* lower_bound,
                                const Key* upper_bound,
@@ -113,7 +111,7 @@ struct gpu_blink_tree {
         &num_blocks_per_sm,
         kernels::concurrent_insert_range_kernel_blink<
             Key,
-            Value,
+            T,
             value_type,
             size_type,
             typename std::remove_reference<decltype(*this)>::type>,
@@ -138,7 +136,7 @@ struct gpu_blink_tree {
   }
 
   void concurrent_find_erase(const Key* find_keys,
-                             Value* find_results,
+                             T* find_results,
                              const size_type num_finds,
                              const Key* erase_keys,
                              const size_type num_erasures,
@@ -151,7 +149,7 @@ struct gpu_blink_tree {
         &num_blocks_per_sm,
         kernels::concurrent_find_erase_kernel_blink<
             Key,
-            Value,
+            T,
             size_type,
             typename std::remove_reference<decltype(*this)>::type>,
         block_size,
@@ -166,17 +164,14 @@ struct gpu_blink_tree {
         find_keys, find_results, num_finds, erase_keys, num_erasures, *this);
   }
 
-  void insert(const Key* keys,
-              const Value* values,
-              const size_type num_keys,
-              cudaStream_t stream = 0) {
+  void insert(const Key* keys, const T* values, const size_type num_keys, cudaStream_t stream = 0) {
     const uint32_t block_size = 512;
     const uint32_t num_blocks = (num_keys + block_size - 1) / block_size;
     kernels::insert_kernel<<<num_blocks, block_size, 0, stream>>>(keys, values, num_keys, *this);
   }
 
   void find(const Key* keys,
-            Value* values,
+            T* values,
             const size_type num_keys,
             cudaStream_t stream = 0,
             bool concurrent     = false) const {
@@ -218,7 +213,7 @@ struct gpu_blink_tree {
   // Device-side APIs
   template <typename tile_type, typename DeviceAllocator>
   DEVICE_QUALIFIER bool cooperative_insert(const Key& key,
-                                           const Value& value,
+                                           const T& value,
                                            const tile_type& tile,
                                            DeviceAllocator& allocator) {
     return cooperative_insert_blink(key, value, tile, allocator);
@@ -226,10 +221,10 @@ struct gpu_blink_tree {
   }
 
   template <typename tile_type, typename DeviceAllocator>
-  DEVICE_QUALIFIER Value cooperative_find(const Key& key,
-                                          const tile_type& tile,
-                                          DeviceAllocator& allocator,
-                                          bool concurrent = false) {
+  DEVICE_QUALIFIER T cooperative_find(const Key& key,
+                                      const tile_type& tile,
+                                      DeviceAllocator& allocator,
+                                      bool concurrent = false) {
     auto value              = std::numeric_limits<uint32_t>::max();
     using node_type         = btree_node<value_type, tile_type, branching_factor>;
     auto current_node_index = *d_root_index_;
@@ -260,7 +255,7 @@ struct gpu_blink_tree {
                                                      const tile_type& tile,
                                                      DeviceAllocator& allocator,
                                                      value_type* buffer = nullptr,
-                                                     bool concurrent   = false) /*const*/
+                                                     bool concurrent    = false) /*const*/
   {
     using node_type         = btree_node<value_type, tile_type, branching_factor>;
     auto current_node_index = *d_root_index_;
@@ -342,7 +337,7 @@ struct gpu_blink_tree {
 
   template <typename tile_type, typename DeviceAllocator>
   DEVICE_QUALIFIER bool cooperative_insert_hand_over_hand(const Key& key,
-                                                          const Value& value,
+                                                          const T& value,
                                                           const tile_type& tile,
                                                           DeviceAllocator& allocator) {
     using node_type         = btree_node<value_type, tile_type, branching_factor>;
@@ -472,7 +467,7 @@ struct gpu_blink_tree {
 
   template <typename tile_type, typename DeviceAllocator>
   DEVICE_QUALIFIER bool cooperative_insert_blink(const Key& key,
-                                                 const Value& value,
+                                                 const T& value,
                                                  const tile_type& tile,
                                                  DeviceAllocator& allocator) {
     using node_type         = btree_node<value_type, tile_type, branching_factor>;
@@ -685,7 +680,7 @@ struct gpu_blink_tree {
 
   // Stats
   void copy_tree_to_host(size_type bytes_count) {
-    allocator_.copy_buffer(reinterpret_cast<node_type<Key, Value, B>*>(h_btree_), bytes_count);
+    allocator_.copy_buffer(reinterpret_cast<node_type<Key, T, B>*>(h_btree_), bytes_count);
   }
 
   size_type get_num_tree_node() { return allocator_.get_allocated_count(); }
@@ -700,7 +695,7 @@ struct gpu_blink_tree {
     h_btree_ = new value_type[num_allocated_nodes * branching_factor];
 
     std::size_t tree_size = num_allocated_nodes * branching_factor;
-    tree_size *= (sizeof(Key) + sizeof(Value));
+    tree_size *= (sizeof(Key) + sizeof(T));
 
     copy_tree_to_host(tree_size);
 
@@ -750,8 +745,8 @@ struct gpu_blink_tree {
       level_nodes++;
 
       value_type metadata = *(current + metadata_lane);
-      bool is_leaf       = is_leaf_node(metadata);
-      bool is_locked     = is_locked_node(metadata);
+      bool is_leaf        = is_leaf_node(metadata);
+      bool is_locked      = is_locked_node(metadata);
 
       if (is_locked) { throw std::logic_error("Tree node is locked"); }
 
@@ -792,9 +787,9 @@ struct gpu_blink_tree {
     // Validate the tree structure
     for (uint32_t level_id = 0; level_id < levels_nodes_ids.size(); level_id++) {
       for (uint32_t node_id = 0; node_id < levels_nodes_ids[level_id].size(); node_id++) {
-        uint32_t node_idx  = levels_nodes_ids[level_id][node_id];
+        uint32_t node_idx   = levels_nodes_ids[level_id][node_id];
         value_type metadata = (h_btree_ + node_idx * branching_factor)[metadata_lane];
-        metadata           = mask_metadata(metadata);
+        metadata            = mask_metadata(metadata);
 
         key_type link_min  = metadata.first;
         size_type link_ptr = metadata.second;
@@ -864,9 +859,9 @@ struct gpu_blink_tree {
     dot << "table border = \"0\" cellspacing=\"0\"><tr>";
 
     for (size_t lane = 0; lane < branching_factor; lane++) {
-      bool ptr_lane    = lane == (branching_factor - 1);
-      bool ts_lane     = lane == (branching_factor - 2);
-      key_type key     = node[lane].first;
+      bool ptr_lane     = lane == (branching_factor - 1);
+      bool ts_lane      = lane == (branching_factor - 2);
+      key_type key      = node[lane].first;
       mapped_type value = node[lane].second;
 
       bool is_locked = node[branching_factor - 1].second & locked_bit_mask;
@@ -890,7 +885,7 @@ struct gpu_blink_tree {
           dot << " bgcolor=\"#D3D3D3\"";
         }
         dot << ">";
-        if (key == invalid_key) {
+        if (key == sentinel_key_) {
           dot << " ";
         } else {
           if (ts_lane) {
@@ -937,7 +932,7 @@ struct gpu_blink_tree {
   void plot_dot(std::string fname, const bool plot_links = true) {
     auto num_nodes = get_num_tree_node();
     h_btree_       = new value_type[num_nodes * branching_factor];
-    copy_tree_to_host(num_nodes * branching_factor * (sizeof(Key) + sizeof(Value)));
+    copy_tree_to_host(num_nodes * branching_factor * (sizeof(Key) + sizeof(T)));
 
     std::stringstream dot;
     dot << "digraph g {" << std::endl;
@@ -968,7 +963,7 @@ struct gpu_blink_tree {
     auto num_nodes = get_num_tree_node();
     h_btree_       = new value_type[num_nodes * branching_factor];
 
-    copy_tree_to_host(num_nodes * branching_factor * (sizeof(Key) + sizeof(Value)));
+    copy_tree_to_host(num_nodes * branching_factor * (sizeof(Key) + sizeof(T)));
     for (size_type node = 0; node < num_nodes; node++) {
       std::cout << "Node: " << node << std::endl;
       for (size_type lane = 0; lane < branching_factor; lane++) { std::cout << lane << ","; }
@@ -987,7 +982,7 @@ struct gpu_blink_tree {
         value                    = value & empty_pointer;
 
         if (ptr_lane) {
-          if (key == invalid_key) {
+          if (key == sentinel_key_) {
             std::cout << "{x,";
           } else {
             std::cout << "{" << key << ",";
@@ -1009,7 +1004,7 @@ struct gpu_blink_tree {
           }
 
         } else {
-          if (key == invalid_key) {
+          if (key == sentinel_key_) {
             std::cout << "{x,x}";
           } else {
             std::cout << "{" << key << "," << value << "}";
@@ -1026,9 +1021,12 @@ struct gpu_blink_tree {
   }
   double compute_memory_usage() {
     auto num_nodes       = get_num_tree_node();
-    double tree_size_gbs = double(num_nodes) * sizeof(node_type<Key, Value, B>) / (1ull << 30);
+    double tree_size_gbs = double(num_nodes) * sizeof(node_type<Key, T, B>) / (1ull << 30);
     return tree_size_gbs;
   }
+
+  auto get_sentinel_key() const { return sentinel_key_; }
+  auto get_sentinel_value() const { return sentinel_value_; }
 
  private:
   template <typename key_type,
@@ -1122,7 +1120,6 @@ struct gpu_blink_tree {
   }
 
   std::shared_ptr<size_type> root_index_;
-
   size_type* d_snapshot_index_;
 
   value_type* h_btree_;
@@ -1131,5 +1128,8 @@ struct gpu_blink_tree {
   size_type* d_root_index_;
 
   allocator_type allocator_;
+
+  key_type sentinel_key_;
+  value_type sentinel_value_;
 };
 }  // namespace GpuBTree

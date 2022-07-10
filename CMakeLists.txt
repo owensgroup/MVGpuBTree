@@ -19,7 +19,9 @@ option(build_tests "Build tests" ON)
 
 
 # Auto-detect GPU architecture, sets ${CUDA_ARCHS}
+include("cmake/CPM.cmake")
 include("cmake/AutoDetectCudaArch.cmake")
+include("cmake/FindLibcudacxx.cmake")
 
 # Direct all output to /bin directory
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/bin)
@@ -64,6 +66,7 @@ set(btree_includes "${CMAKE_CURRENT_SOURCE_DIR}/include")
 add_library(developer_flags INTERFACE)
 target_include_directories( developer_flags
                             INTERFACE ${external_includes}
+                            INTERFACE ${libcudacxx_includes}
                             INTERFACE ${rapidjson_includes})
 target_compile_options(developer_flags INTERFACE
     $<$<COMPILE_LANGUAGE:CXX>:${CXX_FLAGS}>

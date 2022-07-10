@@ -70,7 +70,7 @@ bench_rates bench_versioned_erase_find(thrust::device_vector<KeyT> &d_keys,
 
   const KeyT invalid_key     = std::numeric_limits<KeyT>::max();
   const ValueT invalid_value = std::numeric_limits<ValueT>::max();
-  const typename BTree::pair_type invalid_pair(invalid_key, invalid_value);
+  const typename BTree::pair invalid_pair(invalid_key, invalid_value);
 
   for (std::size_t exp = 0; exp < num_experiments; exp++) {
     std::cout << "Experiment " << exp << "/" << num_experiments << "...";
@@ -201,10 +201,10 @@ int main(int argc, char **argv) {
 
   using key_type                 = uint32_t;
   using value_type               = uint32_t;
-  using pair_type                = pair_type<key_type, value_type>;
+  using pair                     = pair<key_type, value_type>;
   const key_type invalid_key     = std::numeric_limits<key_type>::max();
   const value_type invalid_value = std::numeric_limits<value_type>::max();
-  const pair_type invalid_pair(invalid_key, invalid_value);
+  const pair invalid_pair(invalid_key, invalid_value);
   auto to_value = [] __host__ __device__(key_type x) { return x % 10; };
 
   unsigned seed = 0;

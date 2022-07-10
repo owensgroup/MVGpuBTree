@@ -23,19 +23,19 @@
 
 // #define DEBUG_LOCKING
 // #define DEBUG_CHECKS
-template <typename pair_type, typename tile_type, int node_width = 16>
+template <typename pair, typename tile_type, int node_width = 16>
 struct btree_versioned_node {
-  using key_type   = typename pair_type::key_type;
-  using value_type = typename pair_type::value_type;
+  using key_type   = typename pair::key_type;
+  using value_type = typename pair::value_type;
   using size_type  = uint32_t;
   using unsigned_type =
       typename std::conditional<sizeof(key_type) == sizeof(uint32_t), uint32_t, uint64_t>::type;
 
-  DEVICE_QUALIFIER btree_versioned_node(pair_type* ptr, const tile_type& tile)
+  DEVICE_QUALIFIER btree_versioned_node(pair* ptr, const tile_type& tile)
       : node_ptr_(ptr), tile_(tile), is_locked_(false) {}
-  DEVICE_QUALIFIER btree_versioned_node(pair_type* ptr,
+  DEVICE_QUALIFIER btree_versioned_node(pair* ptr,
                                         const tile_type& tile,
-                                        const pair_type pair,
+                                        const pair pair,
                                         bool is_locked,
                                         bool is_intermediate)
       : node_ptr_(ptr)
@@ -44,20 +44,20 @@ struct btree_versioned_node {
       , is_locked_(is_locked)
       , is_intermediate_(is_intermediate) {}
 
-  DEVICE_QUALIFIER void store_unlocked_copy_at(pair_type* ptr) {
+  DEVICE_QUALIFIER void store_unlocked_copy_at(pair* ptr) {
     auto to_store = lane_pair_;
     if (tile_.thread_rank() == metadata_lane_) { to_store.second = mask_lock_bit(to_store.second); }
-    cuda_memory<pair_type>::store(
+    cuda_memory<pair>::store(
         ptr + tile_.thread_rank(), to_store, cuda_memory_order::memory_order_relaxed);
   }
 
   DEVICE_QUALIFIER void load(cuda_memory_order order = cuda_memory_order::memory_order_weak) {
-    lane_pair_       = cuda_memory<pair_type>::load(node_ptr_ + tile_.thread_rank(), order);
+    lane_pair_       = cuda_memory<pair>::load(node_ptr_ + tile_.thread_rank(), order);
     is_intermediate_ = !(get_sibling_data() & leaf_bit_mask_);
     is_locked_       = (get_sibling_data() & lock_bit_mask_);
   }
   DEVICE_QUALIFIER void store(cuda_memory_order order = cuda_memory_order::memory_order_weak) {
-    cuda_memory<pair_type>::store(node_ptr_ + tile_.thread_rank(), lane_pair_, order);
+    cuda_memory<pair>::store(node_ptr_ + tile_.thread_rank(), lane_pair_, order);
     is_intermediate_ = !(get_sibling_data() & leaf_bit_mask_);
   }
 
@@ -87,7 +87,7 @@ struct btree_versioned_node {
 
   template <typename size_type>
   DEVICE_QUALIFIER btree_versioned_node do_split(const size_type right_sibling_index,
-                                                 pair_type* right_sibling_ptr,
+                                                 pair* right_sibling_ptr,
                                                  const bool make_sibling_locked = false,
                                                  const bool is_intermediate     = true) {
     // find the two minimum keys
@@ -104,13 +104,13 @@ struct btree_versioned_node {
     auto this_node__next_ts_index = get_value_from_lane(version_lane_);
 
     // overwrite upper half-node
-    pair_type upper_pair;
+    pair upper_pair;
     if (tile_.thread_rank() >= (half_node_width_ - 2)) {
-      upper_pair = pair_type();
+      upper_pair = pair();
     } else {
-      upper_pair = pair_type(upper_key, upper_value);
+      upper_pair = pair(upper_key, upper_value);
     }
-    if (tile_.thread_rank() >= half_node_width_) { lane_pair_ = pair_type(); }
+    if (tile_.thread_rank() >= half_node_width_) { lane_pair_ = pair(); }
 
     if (tile_.thread_rank() == metadata_lane_) {
       auto sibling_sibling_index   = mask_meta_bit(this_node_sibling_index);
@@ -125,15 +125,15 @@ struct btree_versioned_node {
         sibling_sibling_index   = set_leaf_bit(sibling_sibling_index);
         this_node_sibling_index = set_leaf_bit(this_node_sibling_index);
       }
-      lane_pair_ = pair_type(this_node_sibling_highkey, this_node_sibling_index);
-      upper_pair = pair_type(sibling_sibling_highkey, sibling_sibling_index);
+      lane_pair_ = pair(this_node_sibling_highkey, this_node_sibling_index);
+      upper_pair = pair(sibling_sibling_highkey, sibling_sibling_index);
     }
     if (tile_.thread_rank() == version_lane_ && is_intermediate) {
       lane_pair_ = {this_node_ts, this_node__next_ts_index};
       upper_pair = {this_node_ts, this_node__next_ts_index};
     } else if (tile_.thread_rank() == version_lane_ && !is_intermediate) {
-      lane_pair_       = pair_type();
-      upper_pair       = pair_type();
+      lane_pair_       = pair();
+      upper_pair       = pair();
       lane_pair_.first = this_node_ts;
       upper_pair.first = this_node_ts;
     }
@@ -148,8 +148,8 @@ struct btree_versioned_node {
   template <typename size_type>
   DEVICE_QUALIFIER split_intermediate_result split(const size_type right_sibling_index,
                                                    const size_type parent_index,
-                                                   pair_type* right_sibling_ptr,
-                                                   pair_type* parent_ptr,
+                                                   pair* right_sibling_ptr,
+                                                   pair* parent_ptr,
                                                    const bool make_sibling_locked = false) {
     // We assume here that the parent is locked
     auto split_result = do_split(right_sibling_index, right_sibling_ptr, make_sibling_locked);
@@ -184,8 +184,8 @@ struct btree_versioned_node {
   template <typename size_type>
   DEVICE_QUALIFIER two_nodes_result split_as_root(const size_type left_sibling_index,
                                                   const size_type right_sibling_index,
-                                                  pair_type* left_sibling_ptr,
-                                                  pair_type* right_sibling_ptr,
+                                                  pair* left_sibling_ptr,
+                                                  pair* right_sibling_ptr,
                                                   const bool make_children_locked = false) {
     // Create a new root
     auto right_node_minimum = get_key_from_lane(node_width >> 1);
@@ -201,7 +201,7 @@ struct btree_versioned_node {
     } else if (tile_.thread_rank() == 1) {
       lane_pair_ = {right_node_minimum, right_sibling_index};
     } else if (tile_.thread_rank() != metadata_lane_ && tile_.thread_rank() != version_lane_) {
-      lane_pair_ = pair_type();
+      lane_pair_ = pair();
     }
 
     // now split the left child
@@ -275,10 +275,10 @@ struct btree_versioned_node {
   DEVICE_QUALIFIER void set_key_at_lane(const int& location, key_type key) {
     if (tile_.thread_rank() == location) { lane_pair_.first = key; }
   }
-  DEVICE_QUALIFIER pair_type get_pair_from_lane(const int& location) const {
+  DEVICE_QUALIFIER pair get_pair_from_lane(const int& location) const {
     auto key   = get_key_from_lane(location);
     auto value = get_value_from_lane(location);
-    return pair_type(key, value);
+    return pair(key, value);
   }
   DEVICE_QUALIFIER value_type get_value_from_lane(const int& location) const {
     return tile_.shfl(lane_pair_.second, location);
@@ -286,7 +286,7 @@ struct btree_versioned_node {
   DEVICE_QUALIFIER void set_value_at_lane(const int& location, value_type val) {
     if (tile_.thread_rank() == location) { lane_pair_.second = val; }
   }
-  DEVICE_QUALIFIER void set_pair_at_lane(const int& location, pair_type pair) {
+  DEVICE_QUALIFIER void set_pair_at_lane(const int& location, pair pair) {
     if (tile_.thread_rank() == location) { lane_pair_ = pair; }
   }
   DEVICE_QUALIFIER bool insert(const key_type key, const value_type value) {
@@ -338,7 +338,7 @@ struct btree_versioned_node {
           tile_.thread_rank() != version_lane_) {
         lane_pair_ = {down_keys, down_values};
       }
-      if (tile_.thread_rank() == last_pair_lane_) { lane_pair_ = pair_type(); }
+      if (tile_.thread_rank() == last_pair_lane_) { lane_pair_ = pair(); }
     } else {
       return false;
     }
@@ -348,7 +348,7 @@ struct btree_versioned_node {
   // [lower_bound, upper_bound)
   DEVICE_QUALIFIER size_type get_in_range(const key_type& lower_bound,
                                           const key_type& upper_bound,
-                                          pair_type* output) const {
+                                          pair* output) const {
     bool is_valid_lane   = lane_is_valid();
     bool in_range        = lane_pair_.first >= lower_bound && lane_pair_.first < upper_bound;
     auto in_range_ballot = tile_.ballot(in_range && is_valid_lane);
@@ -480,7 +480,7 @@ struct btree_versioned_node {
     return data & lock_bit_mask_;
   }
 
-  DEVICE_QUALIFIER void set_pair(const pair_type pair) { lane_pair_ = pair; }
+  DEVICE_QUALIFIER void set_pair(const pair pair) { lane_pair_ = pair; }
 
   DEVICE_QUALIFIER bool is_full() const {
     auto key = get_key_from_lane(last_pair_lane_);
@@ -567,10 +567,10 @@ struct btree_versioned_node {
 #endif
   }
 
-  DEVICE_QUALIFIER pair_type get_pair() const { return lane_pair_; }
+  DEVICE_QUALIFIER pair get_pair() const { return lane_pair_; }
 
-  DEVICE_QUALIFIER btree_versioned_node<pair_type, tile_type, node_width>& operator=(
-      const btree_versioned_node<pair_type, tile_type, node_width>& other) {
+  DEVICE_QUALIFIER btree_versioned_node<pair, tile_type, node_width>& operator=(
+      const btree_versioned_node<pair, tile_type, node_width>& other) {
     node_ptr_        = other.node_ptr_;
     lane_pair_       = other.lane_pair_;
     is_locked_       = other.is_locked_;
@@ -593,8 +593,8 @@ struct btree_versioned_node {
   static constexpr int half_node_width_           = node_width >> 1;
 
  private:
-  pair_type* node_ptr_;
-  pair_type lane_pair_;
+  pair* node_ptr_;
+  pair lane_pair_;
   const tile_type tile_;
   bool is_locked_;
   bool is_intermediate_;

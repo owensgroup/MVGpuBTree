@@ -206,10 +206,10 @@ int main(int argc, char **argv) {
 
   using key_type                 = uint32_t;
   using value_type               = uint32_t;
-  using pair_type                = pair_type<key_type, value_type>;
+  using pair                     = pair<key_type, value_type>;
   const key_type invalid_key     = std::numeric_limits<key_type>::max();
   const value_type invalid_value = std::numeric_limits<value_type>::max();
-  const pair_type invalid_pair(invalid_key, invalid_value);
+  const pair invalid_pair(invalid_key, invalid_value);
   auto to_value       = [] __host__ __device__(key_type x) { return x % 10; };
   auto to_upper_bound = [average_range_length] __host__ __device__(key_type x) {
     return x + average_range_length;
@@ -225,7 +225,7 @@ int main(int argc, char **argv) {
   auto d_range_lower = thrust::device_vector<key_type>(num_range_query, invalid_key);
   auto d_range_upper = thrust::device_vector<key_type>(num_range_query, invalid_key);
   auto d_range_results =
-      thrust::device_vector<pair_type>(num_range_query * average_range_length, invalid_pair);
+      thrust::device_vector<pair>(num_range_query * average_range_length, invalid_pair);
 
   // host vectors
   auto h_keys = rkg::generate_keys<key_type>(num_keys, rng, rkg::distribution_type::unique_random);

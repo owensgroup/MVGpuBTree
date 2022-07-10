@@ -18,41 +18,41 @@
 #include <limits>
 
 template <typename Key, typename Value>
-struct __align__(8) pair_type {
+struct __align__(8) pair {
   using key_type   = Key;
   using value_type = Value;
   using size_type  = uint32_t;
-  HOST_DEVICE_QUALIFIER pair_type(const key_type& key, const value_type& value)
+  HOST_DEVICE_QUALIFIER pair(const key_type& key, const value_type& value)
       : first(key), second(value) {}
-  HOST_DEVICE_QUALIFIER pair_type(void)
+  HOST_DEVICE_QUALIFIER pair(void)
       : first(std::numeric_limits<key_type>::max())
       , second(std::numeric_limits<value_type>::max()){};
-  HOST_DEVICE_QUALIFIER pair_type(const pair_type<key_type, value_type>& other) {
+  HOST_DEVICE_QUALIFIER pair(const pair<key_type, value_type>& other) {
     first  = other.first;
     second = other.second;
   }
 
-  HOST_DEVICE_QUALIFIER pair_type(const volatile pair_type<key_type, value_type>& other) {
+  HOST_DEVICE_QUALIFIER pair(const volatile pair<key_type, value_type>& other) {
     first  = other.first;
     second = other.second;
   }
-  HOST_DEVICE_QUALIFIER volatile pair_type<key_type, value_type>& operator=(
-      const volatile pair_type<key_type, value_type>& other) volatile {
+  HOST_DEVICE_QUALIFIER volatile pair<key_type, value_type>& operator=(
+      const volatile pair<key_type, value_type>& other) volatile {
     first  = other.first;
     second = other.second;
     return *this;
   }
-  HOST_DEVICE_QUALIFIER pair_type<key_type, value_type>& operator=(
-      const pair_type<key_type, value_type>& other) {
+  HOST_DEVICE_QUALIFIER pair<key_type, value_type>& operator=(
+      const pair<key_type, value_type>& other) {
     first  = other.first;
     second = other.second;
     return *this;
   }
 
-  HOST_DEVICE_QUALIFIER bool operator==(const pair_type<key_type, value_type>& other) {
+  HOST_DEVICE_QUALIFIER bool operator==(const pair<key_type, value_type>& other) {
     return (first == other.first) && (second == other.second);
   }
-  HOST_DEVICE_QUALIFIER bool operator!=(const pair_type<key_type, value_type>& other) {
+  HOST_DEVICE_QUALIFIER bool operator!=(const pair<key_type, value_type>& other) {
     return (first != other.first) || (second != other.second);
   }
 

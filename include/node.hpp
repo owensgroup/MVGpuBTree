@@ -17,32 +17,35 @@
 #pragma once
 #include <cuda/atomic>
 
-
 #include <cstdint>
 #include <macros.hpp>
 #include <memory_utils.hpp>
 #include <utils.hpp>
 
 //#define DEBUG_NODE
-template <typename pair_type, typename tile_type, int node_width = 16>
+template <typename pair_type,
+          typename tile_type,
+          int node_width           = 16,
+          cuda::thread_scope Scope = cuda::thread_scope_device>
 struct btree_node {
-  using key_type                            = typename pair_type::first;
-  using mapped_type                          = typename pair_type::second;
-  static constexpr key_type invalid_key     = std::numeric_limits<uint32_t>::max();
-  static constexpr mapped_type invalid_value = std::numeric_limits<uint32_t>::max();
-  using size_type                           = uint32_t;
+  using key_type    = typename pair_type::first_type;
+  using mapped_type = typename pair_type::second_type;
+  using size_type   = uint32_t;
   using unsigned_type =
       typename std::conditional<sizeof(key_type) == sizeof(uint32_t), uint32_t, uint64_t>::type;
   DEVICE_QUALIFIER btree_node(pair_type* ptr, const tile_type& tile)
-      : node_ptr_(ptr), atomic_node_ptr_{ptr}, tile_(tile), is_locked_(false) {}
+      : node_ptr_(ptr)
+      , atomic_lane_ptr_{ptr + tile.thread_rank()}
+      , tile_(tile)
+      , is_locked_(false) {}
   DEVICE_QUALIFIER btree_node(pair_type* ptr,
                               const tile_type& tile,
-                              const pair_type pair,
+                              const pair_type lane_pair,
                               bool is_locked,
                               bool is_intermediate)
       : node_ptr_(ptr)
-      , atomic_node_ptr_{ptr + tile.thread_rank()}
-      , lane_pair_(pair)
+      , atomic_lane_ptr_{ptr + tile.thread_rank()}
+      , lane_pair_(lane_pair)
       , tile_(tile)
       , is_locked_(is_locked)
       , is_intermediate_(is_intermediate) {}
@@ -58,12 +61,12 @@ struct btree_node {
   }
 
   DEVICE_QUALIFIER void load(cuda::memory_order order) {
-    lane_pair_      = atomic_node_ptr_.load(order);
+    lane_pair_       = atomic_lane_ptr_.load(order);
     is_intermediate_ = !(get_sibling_data() & leaf_bit_mask_);
     is_locked_       = (get_sibling_data() & lock_bit_mask_);
   }
-  DEVICE_QUALIFIER void store(cuda::memory_order  order) {
-    atomic_node_ptr_.store(lane_pair_, order);
+  DEVICE_QUALIFIER void store(cuda::memory_order order) {
+    atomic_lane_ptr_.store(lane_pair_, order);
     is_intermediate_ = !(get_sibling_data() & leaf_bit_mask_);
   }
 
@@ -411,7 +414,7 @@ struct btree_node {
     return data & lock_bit_mask_;
   }
 
-  DEVICE_QUALIFIER void set_pair(const pair_type pair) { lane_pair_ = pair; }
+  DEVICE_QUALIFIER void set_pair(const pair_type lane_pair) { lane_pair_ = lane_pair; }
 
   DEVICE_QUALIFIER bool is_full() const {
     auto key = get_key_from_lane(last_pair_lane_);
@@ -503,7 +506,7 @@ struct btree_node {
 
  private:
   pair_type* node_ptr_;
-  cuda::atomic_ref<pair_type> atomic_node_ptr_;
+  cuda::atomic_ref<pair_type, Scope> atomic_lane_ptr_;
   pair_type lane_pair_;
   const tile_type tile_;
   // metadata_lane_ Maps to a pair of {high-key, [lock-bit][leaf-bit][ptr-30bits]}. This

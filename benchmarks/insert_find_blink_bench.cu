@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
   std::cout << "Generating input...\n";
   using key_type                            = uint32_t;
   using value_type                          = uint32_t;
-  using pair_type                           = pair_type<key_type, value_type>;
+  using pair                                = pair<key_type, value_type>;
   static constexpr key_type invalid_key     = std::numeric_limits<key_type>::max();
   static constexpr value_type invalid_value = std::numeric_limits<value_type>::max();
   auto to_value                             = [] __host__ __device__(key_type x) { return x % 10; };

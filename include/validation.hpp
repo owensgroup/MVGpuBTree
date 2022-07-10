@@ -33,7 +33,7 @@
 #include <typeinfo>
 #include <unordered_set>
 
-#include <pair_type.hpp>
+#include <detail/pair.cuh>
 
 namespace utils {
 
@@ -45,7 +45,7 @@ inline uint64_t validate(const std::vector<key_type>& h_keys,
                          float exist_ratio = 1.0f) {
   uint64_t num_errors = 0;
   uint64_t max_errors = 10;
-  using pair_type     = pair_type<key_type, value_type>;
+  using pair          = pair<key_type, value_type>;
   auto h_results      = thrust::host_vector<value_type>(d_results);
   std::unordered_set<key_type> cpu_ref_set;
   if (exist_ratio != 1.0f) { cpu_ref_set.insert(h_keys.begin(), h_keys.end()); }
@@ -79,7 +79,7 @@ inline uint64_t validate(const std::unordered_set<key_type>& cpu_ref_set,
                          Function to_value) {
   uint64_t num_errors = 0;
   uint64_t max_errors = 10;
-  using pair_type     = pair_type<key_type, value_type>;
+  using pair          = pair<key_type, value_type>;
   auto h_results      = thrust::host_vector<value_type>(d_results);
   for (size_t i = 0; i < h_results.size(); i++) {
     key_type query_key         = h_find_keys[i];
@@ -110,7 +110,7 @@ inline uint64_t validate_concurrent_find_erase(const std::unordered_set<key_type
                                                Function to_value) {
   uint64_t num_errors          = 0;
   uint64_t max_errors          = 10;
-  using pair_type              = pair_type<key_type, value_type>;
+  using pair                   = pair<key_type, value_type>;
   auto h_results               = thrust::host_vector<value_type>(d_results);
   value_type empty_value       = std::numeric_limits<value_type>::max();
   std::size_t read_erased_keys = 0;
@@ -156,7 +156,7 @@ inline uint64_t validate(const std::vector<key_type>& h_keys,
                          function to_value) {
   uint64_t num_errors = 0;
   uint64_t max_errors = 10;
-  using pair_type     = pair_type<key_type, value_type>;
+  using pair          = pair<key_type, value_type>;
   auto h_results      = thrust::host_vector<value_type>(d_results);
   std::unordered_set<key_type> cpu_ref_set;
   cpu_ref_set.insert(h_keys.begin(), h_keys.begin() + num_keys);
@@ -182,24 +182,24 @@ inline uint64_t validate(const std::vector<key_type>& h_keys,
 }
 
 template <typename key_type,
-          typename pair_type,
+          typename pair,
           typename size_type,
           typename function0,
           typename function1>
 inline uint64_t validate(const std::vector<key_type>& h_keys,
                          const std::vector<key_type>& h_range_keys_lower,
-                         const thrust::device_vector<pair_type>& d_range_results,
+                         const thrust::device_vector<pair>& d_range_results,
                          const thrust::device_vector<size_type>& d_count_results,
                          const size_type& average_range_length,
                          function0 to_value,
                          function1 to_upper_bound) {
   static constexpr key_type invalid_key     = std::numeric_limits<uint32_t>::max();
-  using value_type                          = typename pair_type::value_type;
+  using value_type                          = typename pair::value_type;
   static constexpr value_type invalid_value = std::numeric_limits<uint32_t>::max();
 
   uint64_t num_errors  = 0;
   uint64_t max_errors  = 10;
-  auto h_range_results = thrust::host_vector<pair_type>(d_range_results);
+  auto h_range_results = thrust::host_vector<pair>(d_range_results);
   auto h_count_results = thrust::host_vector<size_type>(d_count_results);
 
   std::set<key_type> ref_set(h_keys.begin(), h_keys.end());
@@ -218,7 +218,7 @@ inline uint64_t validate(const std::vector<key_type>& h_keys,
            (*lower_bound) < query_upper_bound) {
       auto expected_key   = *lower_bound;
       auto expected_value = to_value(expected_key);
-      auto expected_pair  = pair_type(expected_key, expected_value);
+      auto expected_pair  = pair(expected_key, expected_value);
 
       if (has_range && (expected_pair != h_range_results[result_offset])) {
         std::string message =
@@ -240,7 +240,7 @@ inline uint64_t validate(const std::vector<key_type>& h_keys,
     if (has_range && result_offset != (range_start_offset + average_range_length) &&
         result_offset < h_range_results.size()) {
       auto last_pair = h_range_results[result_offset];
-      if (last_pair != pair_type(invalid_key, invalid_value)) {
+      if (last_pair != pair(invalid_key, invalid_value)) {
         std::string message =
             std::string("query_range: [") + std::to_string(query_lower_bound) + std::string(", ") +
             std::to_string(query_upper_bound) + std::string(") ") +
@@ -264,24 +264,24 @@ inline uint64_t validate(const std::vector<key_type>& h_keys,
 }
 
 template <typename key_type,
-          typename pair_type,
+          typename pair,
           typename size_type,
           typename function0,
           typename function1>
 uint64_t validate_concurrent_ops(const std::vector<key_type>& h_range_keys_lower,
-                                 const thrust::device_vector<pair_type>& d_range_results,
+                                 const thrust::device_vector<pair>& d_range_results,
                                  const size_type& average_range_length,
                                  const std::set<key_type>& ref_set_v0,
                                  const std::set<key_type>& ref_set_v1,
                                  function0 to_value,
                                  function1 to_upper_bound) {
   static constexpr key_type invalid_key     = std::numeric_limits<uint32_t>::max();
-  using value_type                          = typename pair_type::value_type;
+  using value_type                          = typename pair::value_type;
   static constexpr value_type invalid_value = std::numeric_limits<uint32_t>::max();
 
   uint64_t num_errors  = 0;
   uint64_t max_errors  = 1;
-  auto h_range_results = thrust::host_vector<pair_type>(d_range_results);
+  auto h_range_results = thrust::host_vector<pair>(d_range_results);
 
   std::vector<key_type> v1_found_keys;
 
@@ -297,7 +297,7 @@ uint64_t validate_concurrent_ops(const std::vector<key_type>& h_range_keys_lower
            (*lower_bound) < query_upper_bound) {
       auto expected_key   = *lower_bound;
       auto expected_value = to_value(expected_key);
-      auto expected_pair  = pair_type(expected_key, expected_value);
+      auto expected_pair  = pair(expected_key, expected_value);
       auto found_pair     = h_range_results[result_offset];
 
       last_v0_key = *lower_bound;
@@ -330,7 +330,7 @@ uint64_t validate_concurrent_ops(const std::vector<key_type>& h_range_keys_lower
            (*lower_bound) < query_upper_bound) {
       auto expected_key   = *lower_bound;
       auto expected_value = to_value(expected_key);
-      auto expected_pair  = pair_type(expected_key, expected_value);
+      auto expected_pair  = pair(expected_key, expected_value);
       auto found_pair     = h_range_results[result_offset];
 
       if (expected_pair != found_pair) {
@@ -344,7 +344,7 @@ uint64_t validate_concurrent_ops(const std::vector<key_type>& h_range_keys_lower
     if (result_offset != (range_start_offset + average_range_length) &&
         result_offset < h_range_results.size()) {
       auto last_pair = h_range_results[result_offset];
-      if (last_pair != pair_type(invalid_key, invalid_value)) {
+      if (last_pair != pair(invalid_key, invalid_value)) {
         std::cout << *(ref_set_v1.lower_bound(last_v0_key)) << '\n';
         std::cout << "offset_before: " << offset_before - range_start_offset << '\n';
         std::cout << "offset_before: " << offset_before << '\n';

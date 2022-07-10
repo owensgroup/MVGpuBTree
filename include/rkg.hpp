@@ -22,9 +22,9 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <detail/pair.cuh>
 #include <filesystem>
 #include <numeric>
-#include <pair_type.hpp>
 #include <set>
 #include <string>
 #include <string_view>

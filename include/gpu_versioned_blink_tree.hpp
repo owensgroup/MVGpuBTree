@@ -23,11 +23,11 @@
 #include <btree_kernels.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <detail/pair.cuh>
 #include <fstream>
 #include <ios>
 #include <iostream>
 #include <node.hpp>
-#include <pair_type.hpp>
 #include <queue>
 #include <sstream>
 #include <stdexcept>
@@ -76,7 +76,7 @@ struct gpu_versioned_btree {
   using size_type                        = uint32_t;
   using key_type                         = Key;
   using value_type                       = Value;
-  using pair_type                        = pair_type<Key, Value>;
+  using pair                             = pair<Key, Value>;
   static auto constexpr branching_factor = B;
   using allocator_type                   = Allocator;
   using device_allocator_context_type    = device_allocator_context<allocator_type>;
@@ -174,7 +174,7 @@ struct gpu_versioned_btree {
   // [lower_bound, upper_bound)
   void range_query(const Key* lower_bound,
                    const Key* upper_bound,
-                   pair_type* result,
+                   pair* result,
                    size_type* counts,
                    const size_type average_range_length,
                    const size_type num_keys,
@@ -195,7 +195,7 @@ struct gpu_versioned_btree {
   // [lower_bound, upper_bound)
   void range_query(const Key* lower_bound,
                    const Key* upper_bound,
-                   pair_type* result,
+                   pair* result,
                    size_type* counts,
                    const size_type average_range_length,
                    const size_type num_keys,
@@ -255,7 +255,7 @@ struct gpu_versioned_btree {
                                const Key* lower_bound,
                                const Key* upper_bound,
                                const size_type num_ranges,
-                               pair_type* result,
+                               pair* result,
                                const size_type average_range_length,
                                cudaStream_t stream = 0) {
     int block_size      = reclaimer_block_size_;
@@ -267,7 +267,7 @@ struct gpu_versioned_btree {
         kernels::concurrent_insert_range_kernel<
             Key,
             Value,
-            pair_type,
+            pair,
             size_type,
             typename std::remove_reference<decltype(*this)>::type>,
         block_size,
@@ -357,11 +357,11 @@ struct gpu_versioned_btree {
                                           const tile_type& tile,
                                           DeviceAllocator& allocator,
                                           bool concurrent = false) {
-    using node_type         = btree_versioned_node<pair_type, tile_type, branching_factor>;
+    using node_type         = btree_versioned_node<pair, tile_type, branching_factor>;
     auto current_node_index = *d_root_index_;
     while (true) {
       node_type current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<pair*>(allocator.address(allocator_, current_node_index)), tile);
       if (concurrent) {
         current_node.load(cuda_memory_order::memory_order_relaxed);
         current_node.init(invalid_timestamp_, d_snapshot_index_);
@@ -395,11 +395,11 @@ struct gpu_versioned_btree {
                                           const tile_type& tile,
                                           DeviceAllocator& allocator,
                                           DeviceReclaimer& reclaimer) {
-    using node_type         = btree_versioned_node<pair_type, tile_type, branching_factor>;
+    using node_type         = btree_versioned_node<pair, tile_type, branching_factor>;
     auto current_node_index = *d_root_index_;
     while (true) {
       node_type current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<pair*>(allocator.address(allocator_, current_node_index)), tile);
       current_node.load(cuda_memory_order::memory_order_relaxed);
       current_node.init(invalid_timestamp_, d_snapshot_index_);
       traverse_side_links_init(current_node, current_node_index, key, tile, allocator);
@@ -413,7 +413,7 @@ struct gpu_versioned_btree {
 
         auto old_node_index = allocator.allocate(allocator_, 1, tile);
         current_node.store_unlocked_copy_at(
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, old_node_index)));
+            reinterpret_cast<pair*>(allocator.address(allocator_, old_node_index)));
 
         bool success = current_node.erase(key);
         // we should only create a copy if we succeed, but for now we always copy and reclaim
@@ -442,11 +442,11 @@ struct gpu_versioned_btree {
                                           const size_type& timestamp,
                                           bool concurrent = false) {
     auto value              = invalid_value;
-    using node_type         = btree_versioned_node<pair_type, tile_type, branching_factor>;
+    using node_type         = btree_versioned_node<pair, tile_type, branching_factor>;
     auto current_node_index = *d_root_index_;
     while (true) {
       node_type current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<pair*>(allocator.address(allocator_, current_node_index)), tile);
       if (concurrent) {
         current_node.load(cuda_memory_order::memory_order_relaxed);
         current_node.init(invalid_timestamp_, d_snapshot_index_);
@@ -481,11 +481,11 @@ struct gpu_versioned_btree {
                                                      DeviceAllocator& allocator,
                                                      const size_type& timestamp) {
     auto value              = invalid_value;
-    using node_type         = btree_versioned_node<pair_type, tile_type, branching_factor>;
+    using node_type         = btree_versioned_node<pair, tile_type, branching_factor>;
     auto current_node_index = *d_root_index_;
     while (true) {
       node_type current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<pair*>(allocator.address(allocator_, current_node_index)), tile);
       current_node.load(cuda_memory_order::memory_order_relaxed);
       traverse_version_list(current_node, timestamp, tile, allocator);
       bool is_leaf   = current_node.is_leaf();
@@ -507,13 +507,13 @@ struct gpu_versioned_btree {
                                                                 const tile_type& tile,
                                                                 DeviceAllocator& allocator,
                                                                 const size_type& timestamp,
-                                                                pair_type* buffer = nullptr) {
-    using node_type         = btree_versioned_node<pair_type, tile_type, branching_factor>;
+                                                                pair* buffer = nullptr) {
+    using node_type         = btree_versioned_node<pair, tile_type, branching_factor>;
     auto current_node_index = *d_root_index_;
     size_type count         = 0;
     while (true) {
       node_type current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<pair*>(allocator.address(allocator_, current_node_index)), tile);
       current_node.load(cuda_memory_order::memory_order_relaxed);
       auto init_res = current_node.init(invalid_timestamp_, d_snapshot_index_);
       traverse_side_links_init(current_node, current_node_index, lower_bound, tile, allocator);
@@ -536,8 +536,7 @@ struct gpu_versioned_btree {
           if (keep_traversing) {
             current_node_index = current_node.get_sibling_index();
             current_node       = node_type(
-                reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)),
-                tile);
+                reinterpret_cast<pair*>(allocator.address(allocator_, current_node_index)), tile);
 
             current_node.load(cuda_memory_order::memory_order_relaxed);
             init_res = current_node.init(invalid_timestamp_, d_snapshot_index_);
@@ -564,7 +563,7 @@ struct gpu_versioned_btree {
                                                                   const tile_type& tile,
                                                                   DeviceAllocator& allocator,
                                                                   MemoryReclaimer& reclaimer) {
-    using node_type = btree_versioned_node<pair_type, tile_type, branching_factor>;
+    using node_type = btree_versioned_node<pair, tile_type, branching_factor>;
 
     auto root_index         = *d_root_index_;
     auto current_node_index = root_index;
@@ -573,7 +572,7 @@ struct gpu_versioned_btree {
     bool link_traversed     = false;
     do {
       auto current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<pair*>(allocator.address(allocator_, current_node_index)), tile);
       current_node.load(cuda_memory_order::memory_order_relaxed);
 
       auto init_res = current_node.init(invalid_timestamp_, d_snapshot_index_);
@@ -614,8 +613,7 @@ struct gpu_versioned_btree {
             if (is_leaf) { current_node.unlock(); }
             current_node_index = current_node.get_sibling_index();
             current_node       = node_type(
-                reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)),
-                tile);
+                reinterpret_cast<pair*>(allocator.address(allocator_, current_node_index)), tile);
             if (is_leaf) { current_node.lock(); }
             current_node.load(cuda_memory_order::memory_order_relaxed);
             current_node.init(invalid_timestamp_, d_snapshot_index_);
@@ -680,8 +678,8 @@ struct gpu_versioned_btree {
 
       // splitting an intermediate node
       if (is_full && (current_node_index != root_index)) {
-        auto parent_node = node_type(
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, parent_index)), tile);
+        auto parent_node =
+            node_type(reinterpret_cast<pair*>(allocator.address(allocator_, parent_index)), tile);
         parent_node.lock();
         parent_node.load(cuda_memory_order::memory_order_relaxed);
         parent_node.init(invalid_timestamp_, d_snapshot_index_);
@@ -711,16 +709,16 @@ struct gpu_versioned_btree {
         size_type old_node_index   = allocator.allocate(allocator_, 1, tile);
         size_type sibling_index    = allocator.allocate(allocator_, 1, tile);
         parent_node.store_unlocked_copy_at(
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, old_parent_index)));
+            reinterpret_cast<pair*>(allocator.address(allocator_, old_parent_index)));
         current_node.store_unlocked_copy_at(
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, old_node_index)));
+            reinterpret_cast<pair*>(allocator.address(allocator_, old_node_index)));
         auto go_right = current_node.key_is_in_upperhalf(key);
 
         auto split_result = current_node.split(
             sibling_index,
             parent_index,
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, sibling_index)),
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, parent_index)),
+            reinterpret_cast<pair*>(allocator.address(allocator_, sibling_index)),
+            reinterpret_cast<pair*>(allocator.address(allocator_, parent_index)),
             true);
 
         // Splitting node and sibling get the same timestamp
@@ -757,16 +755,14 @@ struct gpu_versioned_btree {
         auto old_node_index = allocator.allocate(allocator_, 1, tile);
         auto split_ts       = get_current_version();
         current_node.store_unlocked_copy_at(
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, old_node_index)));
+            reinterpret_cast<pair*>(allocator.address(allocator_, old_node_index)));
 
-        auto two_siblings =
-            current_node.split_as_root(sibling_index0,  // left node
-                                       sibling_index1,  // left right
-                                       reinterpret_cast<pair_type*>(allocator.address(
-                                           allocator_, sibling_index0)),  // left ptr
-                                       reinterpret_cast<pair_type*>(allocator.address(
-                                           allocator_, sibling_index1)),  // right ptr
-                                       true);                             // children_are_locked
+        auto two_siblings = current_node.split_as_root(
+            sibling_index0,                                                          // left node
+            sibling_index1,                                                          // left right
+            reinterpret_cast<pair*>(allocator.address(allocator_, sibling_index0)),  // left ptr
+            reinterpret_cast<pair*>(allocator.address(allocator_, sibling_index1)),  // right ptr
+            true);  // children_are_locked
 
         // set the timestamps
         current_node.set_version_ptr_data(split_ts, old_node_index);
@@ -802,7 +798,7 @@ struct gpu_versioned_btree {
         // copy into a new node
         auto new_node_index = allocator.allocate(allocator_, 1, tile);
         current_node.store_unlocked_copy_at(
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, new_node_index)));
+            reinterpret_cast<pair*>(allocator.address(allocator_, new_node_index)));
         __threadfence();
 
         // now do the in-place update
@@ -826,7 +822,7 @@ struct gpu_versioned_btree {
                                                               const Value& value,
                                                               const tile_type& tile,
                                                               DeviceAllocator& allocator) {
-    using node_type = btree_versioned_node<pair_type, tile_type, branching_factor>;
+    using node_type = btree_versioned_node<pair, tile_type, branching_factor>;
 
     auto root_index         = *d_root_index_;
     auto current_node_index = root_index;
@@ -836,7 +832,7 @@ struct gpu_versioned_btree {
     auto current_timestamp  = get_current_version();
     do {
       auto current_node = node_type(
-          reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
+          reinterpret_cast<pair*>(allocator.address(allocator_, current_node_index)), tile);
       current_node.load(cuda_memory_order::memory_order_relaxed);
 
       // if we restarted from root, we reset the traversal
@@ -868,8 +864,7 @@ struct gpu_versioned_btree {
             if (is_leaf) { current_node.unlock(); }
             current_node_index = current_node.get_sibling_index();
             current_node       = node_type(
-                reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)),
-                tile);
+                reinterpret_cast<pair*>(allocator.address(allocator_, current_node_index)), tile);
             if (is_leaf) { current_node.lock(); }
             current_node.load(cuda_memory_order::memory_order_relaxed);
             is_leaf = current_node.is_leaf();
@@ -932,8 +927,8 @@ struct gpu_versioned_btree {
 
       // splitting an intermediate node
       if (is_full && (current_node_index != root_index)) {
-        auto parent_node = node_type(
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, parent_index)), tile);
+        auto parent_node =
+            node_type(reinterpret_cast<pair*>(allocator.address(allocator_, parent_index)), tile);
         parent_node.lock();
         parent_node.load(cuda_memory_order::memory_order_relaxed);
         bool parent_is_full = parent_node.is_full();
@@ -964,12 +959,12 @@ struct gpu_versioned_btree {
         if (current_timestamp != parent_node_timestamp) {
           old_parent_index = allocator.allocate(allocator_, 1, tile);
           parent_node.store_unlocked_copy_at(
-              reinterpret_cast<pair_type*>(allocator.address(allocator_, old_parent_index)));
+              reinterpret_cast<pair*>(allocator.address(allocator_, old_parent_index)));
         }
         if (current_timestamp != current_node_timestamp) {
           old_node_index = allocator.allocate(allocator_, 1, tile);
           current_node.store_unlocked_copy_at(
-              reinterpret_cast<pair_type*>(allocator.address(allocator_, old_node_index)));
+              reinterpret_cast<pair*>(allocator.address(allocator_, old_node_index)));
         }
         auto go_right = current_node.key_is_in_upperhalf(key);
 
@@ -977,8 +972,8 @@ struct gpu_versioned_btree {
         auto split_result       = current_node.split(
             sibling_index,
             parent_index,
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, sibling_index)),
-            reinterpret_cast<pair_type*>(allocator.address(allocator_, parent_index)),
+            reinterpret_cast<pair*>(allocator.address(allocator_, sibling_index)),
+            reinterpret_cast<pair*>(allocator.address(allocator_, parent_index)),
             true);
 
         if (current_timestamp != parent_node_timestamp) {
@@ -1016,17 +1011,15 @@ struct gpu_versioned_btree {
         if (current_timestamp != current_node_timestamp) {
           old_node_index = allocator.allocate(allocator_, 1, tile);
           current_node.store_unlocked_copy_at(
-              reinterpret_cast<pair_type*>(allocator.address(allocator_, old_node_index)));
+              reinterpret_cast<pair*>(allocator.address(allocator_, old_node_index)));
         }
 
-        auto two_siblings =
-            current_node.split_as_root(sibling_index0,  // left node
-                                       sibling_index1,  // left right
-                                       reinterpret_cast<pair_type*>(allocator.address(
-                                           allocator_, sibling_index0)),  // left ptr
-                                       reinterpret_cast<pair_type*>(allocator.address(
-                                           allocator_, sibling_index1)),  // right ptr
-                                       true);                             // children_are_locked
+        auto two_siblings = current_node.split_as_root(
+            sibling_index0,                                                          // left node
+            sibling_index1,                                                          // left right
+            reinterpret_cast<pair*>(allocator.address(allocator_, sibling_index0)),  // left ptr
+            reinterpret_cast<pair*>(allocator.address(allocator_, sibling_index1)),  // right ptr
+            true);  // children_are_locked
 
         // set the timestamps
         if (current_timestamp != current_node_timestamp) {
@@ -1066,7 +1059,7 @@ struct gpu_versioned_btree {
         if (current_timestamp != current_node_timestamp) {
           new_node_index = allocator.allocate(allocator_, 1, tile);
           current_node.store_unlocked_copy_at(
-              reinterpret_cast<pair_type*>(allocator.address(allocator_, new_node_index)));
+              reinterpret_cast<pair*>(allocator.address(allocator_, new_node_index)));
           __threadfence();
         }
         // now do the in-place update
@@ -1102,7 +1095,7 @@ struct gpu_versioned_btree {
     auto num_allocated_nodes = get_num_tree_node();
     // slab alloc currently doesn't have this implemented
     if (num_allocated_nodes == 0) { return false; }
-    h_btree_              = new pair_type[num_allocated_nodes * branching_factor];
+    h_btree_              = new pair[num_allocated_nodes * branching_factor];
     std::size_t tree_size = num_allocated_nodes * branching_factor;
     tree_size *= (sizeof(Key) + sizeof(Value));
 
@@ -1122,7 +1115,7 @@ struct gpu_versioned_btree {
     std::vector<size_type> level_nodes_ids;
     std::vector<std::vector<size_type>> levels_nodes_ids;
 
-    std::vector<pair_type> tree_pairs;
+    std::vector<pair> tree_pairs;
     std::queue<size_type> queue;
 
     // Copied from node struct because we can't construct it on CPU
@@ -1134,28 +1127,28 @@ struct gpu_versioned_btree {
     uint32_t metadata_lane   = branching_factor - 1;
     uint32_t version_lane    = branching_factor - 2;
 
-    auto is_locked_node = [&](pair_type pair) { return pair.second & lock_bit_mask; };
-    auto is_leaf_node   = [leaf_bit_mask](pair_type pair) { return pair.second & leaf_bit_mask; };
-    auto mask_metadata  = [leaf_bit_mask, lock_bit_mask](pair_type pair) {
+    auto is_locked_node = [&](pair pair) { return pair.second & lock_bit_mask; };
+    auto is_leaf_node   = [leaf_bit_mask](pair pair) { return pair.second & leaf_bit_mask; };
+    auto mask_metadata  = [leaf_bit_mask, lock_bit_mask](pair pair) {
       auto mask = (~lock_bit_mask) & (~leaf_bit_mask);
-      return pair_type(pair.first, pair.second & mask);
+      return pair(pair.first, pair.second & mask);
     };
-    auto tombstone_pair      = pair_type{0, 0};
-    auto invalid_pair        = pair_type{};
+    auto tombstone_pair      = pair{0, 0};
+    auto invalid_pair        = pair{};
     auto empty_metadata_pair = mask_metadata(invalid_pair);
 
     queue.push(0);
 
     while (!queue.empty()) {
-      pair_type* current = h_btree_ + queue.front() * branching_factor;
+      pair* current = h_btree_ + queue.front() * branching_factor;
       num_nodes++;
       level_nodes_ids.push_back(queue.front());
       queue.pop();
       level_nodes++;
 
-      pair_type metadata = *(current + metadata_lane);
-      bool is_leaf       = is_leaf_node(metadata);
-      bool is_locked     = is_locked_node(metadata);
+      pair metadata  = *(current + metadata_lane);
+      bool is_leaf   = is_leaf_node(metadata);
+      bool is_locked = is_locked_node(metadata);
 
       if (is_locked) { throw std::logic_error("Tree node is locked"); }
 
@@ -1196,9 +1189,9 @@ struct gpu_versioned_btree {
     // Validate the tree structure
     for (uint32_t level_id = 0; level_id < levels_nodes_ids.size(); level_id++) {
       for (uint32_t node_id = 0; node_id < levels_nodes_ids[level_id].size(); node_id++) {
-        uint32_t node_idx  = levels_nodes_ids[level_id][node_id];
-        pair_type metadata = (h_btree_ + node_idx * branching_factor)[metadata_lane];
-        metadata           = mask_metadata(metadata);
+        uint32_t node_idx = levels_nodes_ids[level_id][node_id];
+        pair metadata     = (h_btree_ + node_idx * branching_factor)[metadata_lane];
+        metadata          = mask_metadata(metadata);
 
         key_type link_min  = metadata.first;
         size_type link_ptr = metadata.second;
@@ -1212,8 +1205,8 @@ struct gpu_versioned_btree {
           if (link_ptr != correct_ptr) {
             throw std::logic_error("Invalid link information at node");
           }
-          pair_type* neighbor_node = (h_btree_ + correct_ptr * branching_factor);
-          pair_type* cur_node      = (h_btree_ + node_idx * branching_factor);
+          pair* neighbor_node = (h_btree_ + correct_ptr * branching_factor);
+          pair* cur_node      = (h_btree_ + node_idx * branching_factor);
           for (uint32_t i = 0; i < branching_factor; i++) {
             auto cur_pair = (i == (branching_factor - 1)) ? mask_metadata(*cur_node) : *cur_node;
             auto neighbor_pair =
@@ -1242,7 +1235,7 @@ struct gpu_versioned_btree {
 
     for (uint32_t key_id = 0; key_id < keys.size(); key_id++) {
       auto key           = sorted_keys[key_id];
-      auto expected_pair = pair_type{key, to_value(key)};
+      auto expected_pair = pair{key, to_value(key)};
       auto found_pair    = tree_pairs[key_id];
       if (expected_pair != found_pair) { throw std::logic_error("Input pair mismatch tree pair"); }
     }
@@ -1259,7 +1252,7 @@ struct gpu_versioned_btree {
   }
 
   void plot_node(std::stringstream& dot,
-                 pair_type* node,
+                 pair* node,
                  size_type id,
                  const bool plot_links,
                  const bool plot_box_only = false) {
@@ -1345,7 +1338,7 @@ struct gpu_versioned_btree {
                 const bool plot_links    = true,
                 const uint32_t timestamp = invalid_timestamp_) {
     auto num_nodes = get_num_tree_node();
-    h_btree_       = new pair_type[num_nodes * branching_factor];
+    h_btree_       = new pair[num_nodes * branching_factor];
     copy_tree_to_host(num_nodes * branching_factor * (sizeof(Key) + sizeof(Value)));
 
     std::stringstream dot;
@@ -1377,7 +1370,7 @@ struct gpu_versioned_btree {
   }
   void print_vtree_nodes() {
     auto num_nodes = get_num_tree_node();
-    h_btree_       = new pair_type[num_nodes * branching_factor];
+    h_btree_       = new pair[num_nodes * branching_factor];
 
     copy_tree_to_host(num_nodes * branching_factor * (sizeof(Key) + sizeof(Value)));
     for (size_type node = 0; node < num_nodes; node++) {
@@ -1454,21 +1447,20 @@ struct gpu_versioned_btree {
   DEVICE_QUALIFIER void allocate_root_node(const tile_type& tile, DeviceAllocator& allocator) {
     auto root_index = allocator.allocate(allocator_, 1, tile);
     *d_root_index_  = root_index;
-    using node_type = btree_versioned_node<pair_type, tile_type, branching_factor>;
+    using node_type = btree_versioned_node<pair, tile_type, branching_factor>;
 
-    auto lane_pair = pair_type();
-    if (tile.thread_rank() == 0) { lane_pair = pair_type{0, 0}; }
+    auto lane_pair = pair();
+    if (tile.thread_rank() == 0) { lane_pair = pair{0, 0}; }
     if (tile.thread_rank() == node_type::version_lane_) {
       auto version    = get_current_version();
       lane_pair       = {};
       lane_pair.first = version;
     }
-    auto root_node =
-        node_type(reinterpret_cast<pair_type*>(allocator.address(allocator_, root_index)),
-                  tile,
-                  lane_pair,
-                  false,
-                  false);
+    auto root_node = node_type(reinterpret_cast<pair*>(allocator.address(allocator_, root_index)),
+                               tile,
+                               lane_pair,
+                               false,
+                               false);
     root_node.unset_lock_in_registers();
     root_node.set_leaf_in_registers();
     root_node.store();
@@ -1485,8 +1477,7 @@ struct gpu_versioned_btree {
     bool traversed = false;
     while (key >= node.get_high_key()) {
       node_index = node.get_sibling_index();
-      node =
-          node_type(reinterpret_cast<pair_type*>(allocator.address(allocator_, node_index)), tile);
+      node = node_type(reinterpret_cast<pair*>(allocator.address(allocator_, node_index)), tile);
       node.load(cuda_memory_order::memory_order_relaxed);
       traversed |= true;
     }
@@ -1505,7 +1496,7 @@ struct gpu_versioned_btree {
     while (key >= node.get_high_key()) {
       node_index = node.get_sibling_index();
       node_type sibling_node =
-          node_type(reinterpret_cast<pair_type*>(allocator.address(allocator_, node_index)), tile);
+          node_type(reinterpret_cast<pair*>(allocator.address(allocator_, node_index)), tile);
       sibling_node.lock();
       node.unlock();
       node = sibling_node;
@@ -1534,7 +1525,7 @@ struct gpu_versioned_btree {
     while (key >= node.get_high_key()) {
       node_index = node.get_sibling_index();
       node_type sibling_node =
-          node_type(reinterpret_cast<pair_type*>(allocator.address(allocator_, node_index)), tile);
+          node_type(reinterpret_cast<pair*>(allocator.address(allocator_, node_index)), tile);
       sibling_node.lock();
       node.unlock();
       node = sibling_node;
@@ -1559,8 +1550,7 @@ struct gpu_versioned_btree {
     bool traversed = false;
     while (key >= node.get_high_key()) {
       node_index = node.get_sibling_index();
-      node =
-          node_type(reinterpret_cast<pair_type*>(allocator.address(allocator_, node_index)), tile);
+      node = node_type(reinterpret_cast<pair*>(allocator.address(allocator_, node_index)), tile);
       node.load(order);
       auto init_res = node.init(invalid_timestamp_, d_snapshot_index_);
       DEBUG_STRUCTURE_PRINT("%i init side-links next %u result [%i,%u]\n",
@@ -1586,8 +1576,7 @@ struct gpu_versioned_btree {
     while (node_ts > timestamp) {
       auto next = current_node.get_next_version_index();
       if (next == invalid_value) { return true; }
-      current_node =
-          node_type(reinterpret_cast<pair_type*>(allocator.address(allocator_, next)), tile);
+      current_node = node_type(reinterpret_cast<pair*>(allocator.address(allocator_, next)), tile);
       current_node_index = next;
       current_node.load(order);
       node_ts = current_node.get_version_number();
@@ -1630,7 +1619,7 @@ struct gpu_versioned_btree {
 
   template <typename key_type,
             typename value_type,
-            typename pair_type,
+            typename pair,
             typename size_type,
             typename btree>
   friend __global__ void kernels::concurrent_insert_range_kernel(const key_type*,
@@ -1639,7 +1628,7 @@ struct gpu_versioned_btree {
                                                                  const key_type*,
                                                                  const key_type*,
                                                                  const size_type,
-                                                                 pair_type*,
+                                                                 pair*,
                                                                  const size_type,
                                                                  btree);
 
@@ -1674,20 +1663,20 @@ struct gpu_versioned_btree {
                                               const size_type,
                                               const btree,
                                               const bool);
-  template <typename key_type, typename pair_type, typename size_type, typename btree>
+  template <typename key_type, typename pair, typename size_type, typename btree>
   friend __global__ void kernels::range_query_kernel(const key_type*,
                                                      const key_type*,
-                                                     pair_type*,
+                                                     pair*,
                                                      const size_type,
                                                      const size_type,
                                                      btree,
                                                      size_type*,
                                                      const size_type,
                                                      const bool);
-  template <typename key_type, typename pair_type, typename size_type, typename btree>
+  template <typename key_type, typename pair, typename size_type, typename btree>
   friend __global__ void kernels::range_query_kernel(const key_type*,
                                                      const key_type*,
-                                                     pair_type*,
+                                                     pair*,
                                                      const size_type,
                                                      const size_type,
                                                      btree,
@@ -1702,7 +1691,7 @@ struct gpu_versioned_btree {
 
   size_type* d_snapshot_index_;
 
-  pair_type* h_btree_;
+  pair* h_btree_;
   size_type* h_node_count_;
 
   size_type* d_root_index_;

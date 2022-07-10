@@ -15,6 +15,7 @@
  */
 
 #include <gpu_btree.h>
+#include <cuda/atomic>
 
 #include <stdlib.h>
 #include <thrust/sequence.h>
@@ -62,7 +63,7 @@ void batched_insertion_lookup(int argc, char** argv) {
 
   using key_type   = uint32_t;
   using value_type = uint32_t;
-  using pair_type  = pair_type<key_type, value_type>;
+  using pair       = GpuBTree::pair<key_type, value_type>;
   using node_type  = GpuBTree::node_type<key_type, value_type, branching_factor>;
 
   static constexpr key_type invalid_key     = std::numeric_limits<uint32_t>::max();
@@ -91,9 +92,14 @@ void batched_insertion_lookup(int argc, char** argv) {
   d_keys      = h_keys;
   d_find_keys = h_find_keys;
 
+  auto sentinel_key   = std::numeric_limits<key_type>::max();
+  auto sentinel_value = std::numeric_limits<value_type>::max();
+
   // assign values
   thrust::transform(thrust::device, d_keys.begin(), d_keys.end(), d_values.begin(), to_value);
-  GpuBTree::gpu_blink_tree<key_type, value_type, branching_factor, AllocatorT> tree;
+  GpuBTree::
+      gpu_blink_tree<key_type, value_type, branching_factor, cuda::thread_scope_device, AllocatorT>
+          tree(sentinel_key, sentinel_value);
 
   cudaStream_t find_stream;
   cudaStream_t insertion_stream;

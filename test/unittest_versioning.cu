@@ -293,8 +293,8 @@ TYPED_TEST(VersionedBTreeMapTest, RangeQueryTest) {
   auto first_batch_size  = num_keys_ / 2;
   auto second_batch_size = num_keys_ - first_batch_size;
 
-  using pair_type = pair_type<key_type, value_type>;
-  mapped_vector<pair_type> rq_results(rq_length * num_rqs);
+  using pair = pair<key_type, value_type>;
+  mapped_vector<pair> rq_results(rq_length * num_rqs);
 
   // First batch
   this->btree_map_->insert(input.keys.data(), input.values.data(), first_batch_size, 0, false);
@@ -324,7 +324,7 @@ TYPED_TEST(VersionedBTreeMapTest, RangeQueryTest) {
            (*lower_bound) < query_upper_bound) {
       auto expected_key   = *lower_bound;
       auto expected_value = input.to_value(expected_key);
-      auto expected_pair  = pair_type(expected_key, expected_value);
+      auto expected_pair  = pair(expected_key, expected_value);
       auto found_pair     = rq_results[result_offset];
       ASSERT_EQ(expected_pair.first, found_pair.first);
       ASSERT_EQ(expected_pair.second, found_pair.second);
@@ -363,7 +363,7 @@ TYPED_TEST(VersionedBTreeMapTest, RangeQueryTest) {
            (*lower_bound) < query_upper_bound) {
       auto expected_key   = *lower_bound;
       auto expected_value = input.to_value(expected_key);
-      auto expected_pair  = pair_type(expected_key, expected_value);
+      auto expected_pair  = pair(expected_key, expected_value);
       auto found_pair     = rq_results[result_offset];
       ASSERT_EQ(expected_pair.first, found_pair.first);
       ASSERT_EQ(expected_pair.second, found_pair.second);
@@ -382,8 +382,8 @@ TYPED_TEST(VersionedBTreeMapTest, RangeQueryTest) {
 //   testing_input input(num_keys_, rq_length);
 //   EXPECT_EQ(cudaDeviceSynchronize(), cudaSuccess);
 
-//   using pair_type = pair_type<key_type, value_type>;
-//   mapped_vector<pair_type> rq_results(rq_length * num_rqs);
+//   using pair = pair<key_type, value_type>;
+//   mapped_vector<pair> rq_results(rq_length * num_rqs);
 
 //   // First batch
 //   this->btree_map_->concurrent_insert_range(input.keys.data(),
@@ -410,7 +410,7 @@ TYPED_TEST(VersionedBTreeMapTest, RangeQueryTest) {
 //            (*lower_bound) < query_upper_bound) {
 //       auto expected_key = *lower_bound;
 //       auto expected_value = input.to_value(expected_key);
-//       auto expected_pair = pair_type(expected_key, expected_value);
+//       auto expected_pair = pair(expected_key, expected_value);
 //       auto found_pair = rq_results[result_offset];
 //       ASSERT_EQ(expected_pair.first, found_pair.first);
 //       ASSERT_EQ(expected_pair.second, found_pair.second);
@@ -450,7 +450,7 @@ TYPED_TEST(VersionedBTreeMapTest, RangeQueryTest) {
 //            (*lower_bound) < query_upper_bound) {
 //       auto expected_key = *lower_bound;
 //       auto expected_value = input.to_value(expected_key);
-//       auto expected_pair = pair_type(expected_key, expected_value);
+//       auto expected_pair = pair(expected_key, expected_value);
 //       auto found_pair = rq_results[result_offset];
 //       ASSERT_EQ(expected_pair.first, found_pair.first);
 //       ASSERT_EQ(expected_pair.second, found_pair.second);

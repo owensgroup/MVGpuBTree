@@ -63,7 +63,7 @@ void batched_insertion_lookup(int argc, char** argv) {
 
   using key_type   = uint32_t;
   using value_type = uint32_t;
-  using pair_type  = pair_type<key_type, value_type>;
+  using pair       = pair<key_type, value_type>;
   using node_type  = GpuBTree::node_type<key_type, value_type, branching_factor>;
 
   static constexpr key_type invalid_key     = std::numeric_limits<uint32_t>::max();

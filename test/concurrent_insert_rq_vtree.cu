@@ -49,7 +49,7 @@ void build(size_type num_keys,
   num_ranges = (num_ranges + branching_factor - 1) / branching_factor;
   num_ranges = num_ranges * branching_factor;
 
-  using pair_type                           = pair_type<key_type, value_type>;
+  using pair                                = pair<key_type, value_type>;
   static constexpr key_type invalid_key     = std::numeric_limits<uint32_t>::max();
   static constexpr value_type invalid_value = std::numeric_limits<uint32_t>::max();
 
@@ -59,7 +59,7 @@ void build(size_type num_keys,
   auto h_find_keys_lower = std::vector<key_type>(num_ranges, invalid_key);
   auto d_find_keys_lower = thrust::device_vector<key_type>(num_ranges, invalid_key);
   auto d_find_keys_upper = thrust::device_vector<key_type>(num_ranges, invalid_key);
-  auto d_range_results   = thrust::device_vector<pair_type>(num_ranges * average_range_length);
+  auto d_range_results   = thrust::device_vector<pair>(num_ranges * average_range_length);
 
   unsigned seed = 0;
   std::random_device rd;
@@ -166,7 +166,7 @@ void build(size_type num_keys,
   std::cout << " (" << operations_seconds << " s)" << std::endl;
 
   // copy-back the results:
-  auto h_range_results = thrust::host_vector<pair_type>(d_range_results);
+  auto h_range_results = thrust::host_vector<pair>(d_range_results);
   // auto h_find_keys_upper = thrust::host_vector<key_type>(d_find_keys_upper);
   std::size_t prev_range_index = 0;
 
@@ -199,7 +199,7 @@ void build(size_type num_keys,
       utils::validate(h_keys, h_find_keys, d_results, to_value, exist_ratio);*/
 
   // auto tree_size_gbs = tree.compute_memory_usage();
-  // double pairs_size_gbs = double(num_keys) * sizeof(pair_type) / (1ull << 30);
+  // double pairs_size_gbs = double(num_keys) * sizeof(pair) / (1ull << 30);
   // std::cout << "B-Tree used: " << tree_size_gbs << " GiBs, "
   //          << "to store: " << pairs_size_gbs << " GiBs of pairs ("
   //          << pairs_size_gbs / tree_size_gbs * 100.0 << "%)" << std::endl;

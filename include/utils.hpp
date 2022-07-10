@@ -64,8 +64,8 @@ std::size_t get_cuda_buffer_size(const cudaLimit limit) {
 
 namespace GpuBTree {
 template <typename tile_type, typename pair_type>
-DEVICE_QUALIFIER void print_hex(const tile_type& tile, const pair_type& pair) {
-  printf("node: rank: %i, pair{%#010x, %#010x}\n", tile, pair.first, pair.second);
+DEVICE_QUALIFIER void print_hex(const tile_type& tile, const pair_type& value) {
+  printf("node: rank: %i, pair{%#010x, %#010x}\n", tile, value.first, value.second);
 }
 
 };  // namespace GpuBTree
