@@ -16,15 +16,38 @@ COPY environment.yml .
 RUN conda env create -f environment.yml
 SHELL ["conda", "run", "-n", "mvgpubtree", "/bin/bash", "-c"]
 
-# Clone MVGpuBTree code from github and build the code
-RUN git clone https://github.com/owensgroup/MVGpuBTree.git &&\
-    cd MVGpuBTree &&\
-    mkdir build && cd build &&\
-    cmake .. &&\
-    make -j
+# Clone MVGpuBTree code from github
+RUN git clone https://github.com/owensgroup/MVGpuBTree.git
+
+WORKDIR  MVGpuBTree
+# Running CMake
+RUN mkdir build && cd build &&\
+    cmake ..
+
+# Running make
+RUN cd build && make -j
+
+# Activate conda
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "mvgpubtree"]
 
 # Run the unittests
-# docker run -it -d mvgpubtree nv -e NVIDIA_VISIBLE_DEVICES=0
-# CMD cd MVGpuBTree &&\
+# docker build -t mvgpubtree .
+# or ...
+# docker build --no-cache -t mvgpubtree .
+
+
+# docker run -it  --gpus 4 mvgpubtree /bin/bash
+# RUN cd MVGpuBTree &&\
 #     ./build/bin/unittest_btree &&\
 #     ./build/bin/unittest_versioning
+# CMD conda init bash
+# CMD conda activate mvgpubtree
+
+# Run the reproduce script
+# RUN source reproduce.sh
+
+# Plotting
+# CMD cd plots
+
+# CMD source artifact.sh
+
