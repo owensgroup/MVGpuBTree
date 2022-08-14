@@ -34,22 +34,22 @@ do
 
     # Figure 2
     exec_name=plot_blink_vs_versioned
-    python ./${exec_name}.py -d ${input_dir} -od $output_dir -mf ${min_find} -xf ${max_find} -mi ${min_rate} -xi ${max_rate}&> ${output_dir}/${exec_name}.txt
+    python ./${exec_name}.py -d ${input_dir} -od $output_dir -mf ${min_find} -xf ${max_find} -mi ${min_rate} -xi ${max_rate}&> ${output_dir}/${exec_name:5}.txt
 
     # Figure 3 and Table 1
     exec_name=plot_concurrent_insert_range
-    python ./${exec_name}.py -d ${input_dir} -od $output_dir -mf ${min_rate} -xf ${max_rate}&> ${output_dir}/${exec_name}.txt
+    python ./${exec_name}.py -d ${input_dir} -od $output_dir -mf ${min_rate} -xf ${max_rate}&> ${output_dir}/${exec_name:5}.txt
 
     # Figure 4
     exec_name=plot_concurrent_insert_range_vary_range
-    python ./${exec_name}.py -d ${input_dir} -od $output_dir &> ${output_dir}/${exec_name}.txt
+    python ./${exec_name}.py -d ${input_dir} -od $output_dir &> ${output_dir}/${exec_name:5}.txt
 
     # Figure 5 and Table 2
     exec_name=plot_concurrent_erase_find
-    python ./${exec_name}.py -d ${input_dir} -od $output_dir -mf $min_erase_find -xf $max_erase_find&> ${output_dir}/${exec_name}.txt
+    python ./${exec_name}.py -d ${input_dir} -od $output_dir -mf $min_erase_find -xf $max_erase_find&> ${output_dir}/${exec_name:5}.txt
 
     # Figure 6
     exec_name=plot_concurrent_insert_range_reclamation_stats
-    python ./${exec_name}.py -d ${input_dir} -od $output_dir &> ${output_dir}/${exec_name}.txt
+    python ./${exec_name}.py -d ${input_dir} -od $output_dir &> ${output_dir}/${exec_name:5}.txt
 
 done
