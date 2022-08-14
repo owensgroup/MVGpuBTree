@@ -19,13 +19,13 @@ SHELL ["conda", "run", "-n", "mvgpubtree", "/bin/bash", "-c"]
 # Clone MVGpuBTree code from github
 RUN git clone https://github.com/owensgroup/MVGpuBTree.git
 
-WORKDIR  MVGpuBTree
-# Running CMake
-RUN mkdir build && cd build &&\
-    cmake ..
+# WORKDIR  MVGpuBTree
+# # Running CMake
+# RUN mkdir build && cd build &&\
+#     cmake ..
 
-# Running make
-RUN cd build && make -j
+# # Running make
+# RUN cd build && make -j
 
 # Activate conda
 ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "mvgpubtree"]
