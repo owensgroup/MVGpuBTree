@@ -19,35 +19,25 @@ SHELL ["conda", "run", "-n", "mvgpubtree", "/bin/bash", "-c"]
 # Clone MVGpuBTree code from github
 RUN git clone https://github.com/owensgroup/MVGpuBTree.git
 
-# WORKDIR  MVGpuBTree
-# # Running CMake
-# RUN mkdir build && cd build &&\
-#     cmake ..
-
-# # Running make
-# RUN cd build && make -j
-
 # Activate conda
 ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "mvgpubtree"]
 
-# Run the unittests
+# Building the image:
 # docker build -t mvgpubtree .
 # or ...
 # docker build --no-cache -t mvgpubtree .
 
+# running the image
+# docker run -it  --gpus device 0 mvgpubtree /bin/bash
+# or ...
+# docker run -it --name trees --gpus all mvgpubtree /bin/bash
 
-# docker run -it  --gpus 4 mvgpubtree /bin/bash
-# RUN cd MVGpuBTree &&\
-#     ./build/bin/unittest_btree &&\
-#     ./build/bin/unittest_versioning
-# CMD conda init bash
-# CMD conda activate mvgpubtree
+# Follow the reproduce.md script to build, benchmark, generate figures and tables
 
-# Run the reproduce script
-# RUN source reproduce.sh
+# copy results back to host
+# docker cp trees:MVGpuBTree/plots/figs .
 
-# Plotting
-# CMD cd plots
 
-# CMD source artifact.sh
+
+
 
