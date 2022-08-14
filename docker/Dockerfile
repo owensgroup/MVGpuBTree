@@ -27,6 +27,9 @@ ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "mvgpubtree"]
 # or ...
 # docker build --no-cache -t mvgpubtree .
 
+# export the image
+# docker save mvgpubtree | gzip > mvgpubtree_pact22.tar.gz
+
 # running the image
 # docker run -it  --gpus device 0 mvgpubtree /bin/bash
 # or ...
