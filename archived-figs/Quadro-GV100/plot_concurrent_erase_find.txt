@@ -1,0 +1,5 @@
+Reading results from:  ../results/Quadro-GV100
+                          |  BLink          | VBTree  
+45Mkeys_5alpha            |  465.925        | 392.144 
+45Mkeys_50alpha           |  442.258        | 388.434 
+45Mkeys_90alpha           |  437.27         | 369.445 

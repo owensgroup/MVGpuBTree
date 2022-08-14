@@ -1,0 +1,14 @@
+Reading results from:  ../results/Quadro-GV100
+                          |  BLink          | VBTree  
+1Mkeys_8RQ_5alpha         |  235.09         | 260.47  
+1Mkeys_8RQ_50alpha        |  238.913        | 140.664 
+1Mkeys_8RQ_90alpha        |  244.646        | 106.133 
+1Mkeys_32RQ_5alpha        |  243.808        | 244.832 
+1Mkeys_32RQ_50alpha       |  232.624        | 134.681 
+1Mkeys_32RQ_90alpha       |  232.937        | 103.452 
+40Mkeys_8RQ_5alpha        |  245.152        | 267.393 
+40Mkeys_8RQ_50alpha       |  241.143        | 138.259 
+40Mkeys_8RQ_90alpha       |  246.892        | 105.249 
+40Mkeys_32RQ_5alpha       |  266.064        | 223.165 
+40Mkeys_32RQ_50alpha      |  234.538        | 129.503 
+40Mkeys_32RQ_90alpha      |  236.81         | 101.187 

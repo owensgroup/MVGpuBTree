@@ -1,0 +1,4 @@
+Reading results from:  ../results/Quadro-GV100
+B-Tree_slab               |  263.633        | 1509.08 
+ViB-Tree_slab             |  237.827        | 1458.481
+VoB-Tree_slab             |  105.853        | 1531.339
