@@ -57,14 +57,14 @@ ls
 # Figure 2
 insertion_find_rates_slab.pdf           # Rates for insertion and point query for B-Tree vs. VBTree
 insertion_find_rates_slab.svg           # Same as above in svg format
-plot_blink_vs_versioned.txt             # Tabular summary of the  B-Tree vs. VBTree results
+blink_vs_versioned.txt             # Tabular summary of the  B-Tree vs. VBTree results
 
 # Figure 3 and Table 1
 insertion_rq_rates_slab1.pdf            # Rates for operations (insert and RQ) on an initial tree size of 1 million keys
 insertion_rq_rates_slab1.svg            # Same as above in svg format
 insertion_rq_rates_slab40.pdf           # Rates for operations (insert and RQ) on an initial tree size of 40 million keys
 insertion_rq_rates_slab40.svg           # Same as above in svg format
-plot_concurrent_insert_range.txt        # Tabular summary of the concurrent insert RQ results
+concurrent_insert_range.txt        # Tabular summary of the concurrent insert RQ results
 
 # Figure 4
 insertion_vary_rq_rates_initial1M_update50_num_ops5_slab.pdf    # Rates of operations using 1 million keys initial tree size and variable range length
@@ -75,14 +75,14 @@ insertion_vary_rq_rates_initial40M_update50_num_ops5_slab.svg   # Same as above 
 # Figure 5 and Table 2
 erase_find_rates_slab45.pdf             # Rates for operations (find and erase) on an initial tree size of 45 million keys
 erase_find_rates_slab45.svg             # Same as above in svg format
-plot_concurrent_erase_find.txt          # Tabular summary of the concurrent find erase results
+concurrent_erase_find.txt          # Tabular summary of the concurrent find erase results
 
 # Figure 6
 insertion_find_memory_45m_45m_50_16_slab.pdf            # Figure 5.a
 insertion_find_memory_45m_45m_50_16_slab.svg            # Same as above in svg format
 insertion_find_ratio_memory_45m_45m_50_16_slab.pdf      # Figure 5.b
 insertion_find_ratio_memory_45m_45m_50_16_slab.svg      # Same as above in svg format
-plot_concurrent_insert_range_reclamation_stats.txt      # Empty log file
+concurrent_insert_range_reclamation_stats.txt      # Empty log file
 
 
 # Not included in the paper
