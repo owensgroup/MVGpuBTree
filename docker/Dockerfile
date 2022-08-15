@@ -34,7 +34,7 @@ ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "mvgpubtree"]
 # docker load -i mvgpubtree_pact22.tar.gz
 
 # running the image
-# docker run -it  --gpus device 0 mvgpubtree /bin/bash
+# docker run -it --name trees --gpus device 0 mvgpubtree /bin/bash
 # or ...
 # docker run -it --name trees --gpus all mvgpubtree /bin/bash
 
