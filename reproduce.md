@@ -42,7 +42,7 @@ Run the unit tests to check unit tests validation:
 ```
 
 ## Running all the benchmarks and plotting
-Time:  ~5 hours on an Intel(R) Xeon(R) Gold 6146 CPU @ 3.20GHz and a Tesla-V100-PCIE-32GB.
+Time:  ~7 hours on an Intel(R) Xeon(R) Gold 6146 CPU @ 3.20GHz and a Tesla-V100-PCIE-32GB.
 ```bash
 # Run the scripts from the top-level Git directory
 # Running the experiments
@@ -110,7 +110,7 @@ source ../scripts/bench_concurrent_insert_range.sh | tee -a ../results/bench_con
 ```
 
 #### Concurrent insertion and variable range query benchmark (Figure 4)
-
+~2 hours [^1]
 ```bash
 source ../scripts/bench_concurrent_insert_range_vary_range.sh | tee -a ../results/bench_concurrent_insert_range_vary_range.log
 ```
