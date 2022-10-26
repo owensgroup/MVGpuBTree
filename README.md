@@ -49,6 +49,7 @@ Please create an issue. We will welcome any contributions that improve the usabi
   series = {PACT 2022},
   year = 2022,
   month = oct,
-  code = {https://github.com/owensgroup/MVGpuBTree}
-}
+  code = {https://github.com/owensgroup/MVGpuBTree},
+  doi =		 {10.1145/3559009.3569681}
+ }
 ```
