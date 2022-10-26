@@ -45,11 +45,12 @@ Please create an issue. We will welcome any contributions that improve the usabi
 @inproceedings{Awad:2022:AGM,
   author = {Muhammad A. Awad and Serban D. Porumbescu and John D. Owens},
   title = {A {GPU} Multiversion {B}-Tree},
-  booktitle = {Proceedings of the International Conference on Parallel Architectures and Compilation Techniques},
+  booktitle = {Proceedings of the International Conference on Parallel 
+              Architectures and Compilation Techniques},
   series = {PACT 2022},
   year = 2022,
   month = oct,
   code = {https://github.com/owensgroup/MVGpuBTree},
-  doi =		 {10.1145/3559009.3569681}
+  doi = {10.1145/3559009.3569681}
  }
 ```
