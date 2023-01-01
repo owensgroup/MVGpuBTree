@@ -14,7 +14,7 @@ For reference, the repository contains archived results from our paper ([Figures
 You can use our [docker image](https://hub.docker.com/repository/docker/maawad/mvgpubtree) or  a system with the following software:
 * CUDA 11.5 or later
 * C++17/CUDA C++17
-* CMake 3.8 or later
+* CMake 3.18 or later
 * Linux OS
 
 To plot the result, you need a python 3.9.7 or higher with the following libraries installed:
