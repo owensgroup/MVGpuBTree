@@ -16,6 +16,7 @@
 
 #pragma once
 #include <limits>
+#include <cstdint>
 
 template <typename Key, typename Value>
 struct __align__(8) pair_type {
