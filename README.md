@@ -11,7 +11,7 @@
 A GPU B-Tree that supports versioning (snapshots) and linearizable multipoint queries.
 For more information, please check our paper:
 
-[**A GPU Multiversion B-Tree**]()<br>
+[**A GPU Multiversion B-Tree**](https://escholarship.org/uc/item/5kc834wm#page=52)<br>
 *[Muhammad A. Awad](https://maawad.github.io/), [Serban D. Porumbescu](https://web.cs.ucdavis.edu/~porumbes/), and [John D. Owens](https://www.ece.ucdavis.edu/~jowens/)*
 
 The repository also contains:
