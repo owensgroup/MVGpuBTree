@@ -9,7 +9,7 @@
 </tr></table>
 
 A GPU B-Tree that supports versioning (snapshots) and linearizable multipoint queries.
-For more information, please check our paper:
+For more information, please check our PACT 2022 paper:
 
 [**A GPU Multiversion B-Tree**](https://dl.acm.org/doi/10.1145/3559009.3569681)<br>
 *[Muhammad A. Awad](https://maawad.github.io/), [Serban D. Porumbescu](https://web.cs.ucdavis.edu/~porumbes/), and [John D. Owens](https://www.ece.ucdavis.edu/~jowens/)*
@@ -35,7 +35,7 @@ Please create an issue if you face challenges with any of the following limitati
 * Snapshot are limited to a maximum of 2^32 - 1 (can be extended to 2^64-1 easily)
 
 ## Reproducing the paper results
-To reproduce the results, follow the following [steps](reproduce.md). If you find any mismatch (either faster or slower) between the results in the paper, please create an issue, and we will investigate the performance changes.
+To reproduce the results, follow the following [steps](reproduce.md). Our [PACT 2022 paper](https://dl.acm.org/doi/10.1145/3559009.3569681) was awarded the [Results Reproduced v1.1](https://www.acm.org/publications/policies/artifact-review-and-badging-current) badge. If you find any mismatch (either faster or slower) between the results in the paper, please create an issue, and we will investigate the performance changes.
 
 ## Questions and bug report
 Please create an issue. We will welcome any contributions that improve the usability and quality of our repository.
