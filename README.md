@@ -8,6 +8,10 @@
 <th><b><a href="reproduce.md">Reproduce</a></b></th>
 </tr></table>
 
+
+![Multiversion B-Tree](/docs/vbtree-nobg.png)
+
+
 A GPU B-Tree that supports versioning (snapshots) and linearizable multipoint queries.
 For more information, please check our PACT 2022 paper:
 
