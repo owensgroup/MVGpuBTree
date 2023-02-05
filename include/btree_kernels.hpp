@@ -912,5 +912,17 @@ __global__ void insert_kernel(const key_type* keys,
   }
 }
 
+template <typename key_type, typename value_type, typename size_type, typename btree>
+__global__ void bulk_build_kernel(const key_type* keys,
+                                  const value_type* values,
+                                  const size_type keys_count,
+                                  btree tree) {
+  auto thread_id = threadIdx.x + blockIdx.x * blockDim.x;
+  auto block     = cg::this_thread_block();
+  auto tile      = cg::tiled_partition<btree::branching_factor>(block);
+
+  if ((thread_id - tile.thread_rank()) >= keys_count) { return; }
+}
+
 }  // namespace kernels
 }  // namespace GpuBTree

@@ -35,8 +35,8 @@
 #include <device_bump_allocator.hpp>
 #include <slab_alloc.hpp>
 
-//#define DEBUG_LOCKS
-// #define DEBUG_STRUCTURE
+// #define DEBUG_LOCKS
+//  #define DEBUG_STRUCTURE
 
 #ifdef DEBUG_STRUCTURE
 #define DEBUG_STRUCTURE_PRINT(fmt, ...)         \
@@ -81,6 +81,25 @@ struct gpu_blink_tree {
                   "Size of key must be the same as the size of the value");
     allocate();
   }
+  gpu_blink_tree(const Key* keys,
+                 const Value* values,
+                 const size_type num_keys,
+                 cudaStream_t stream)
+      : allocator_{} {
+    static_assert(sizeof(Key) == sizeof(Value),
+                  "Size of key must be the same as the size of the value");
+    allocate();
+
+    if (std::is_same_v<Allocator, device_bump_allocator<node_type<Key, Value, B>>>) {
+      std::cout << "Bulk build is possible" << std::endl;
+      insert(keys, values, num_keys, stream);
+    } else {
+      std::cout << "Bulk build is not possible" << std::endl;
+      // fallback to incremental insertion
+      insert(keys, values, num_keys, stream);
+    }
+  }
+
   gpu_blink_tree(const gpu_blink_tree& other)
       : root_index_(other.root_index_)
       , h_btree_(other.h_btree_)
