@@ -1,5 +1,12 @@
 project (test)
 
+# repro issue #4
+add_executable(repro_4 repro_4.cu)
+set_target_properties(repro_4 PROPERTIES
+								FOLDER "tests")
+target_link_libraries(repro_4 PRIVATE gpu_btrees)
+
+
 
 # concurrent insert range query
 add_executable(concurrent_insert_rq_vtree concurrent_insert_rq_vtree.cu)

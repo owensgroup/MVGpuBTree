@@ -6,21 +6,31 @@ RUN apt-get clean && apt-get update -y -qq
 RUN apt-get install -y wget git build-essential
 
 # Install conda
-ENV PATH="/root/anaconda3/bin:${PATH}"
-RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh &&\
-    chmod +x Miniconda3-latest-Linux-x86_64.sh &&\
-    ./Miniconda3-latest-Linux-x86_64.sh -b -p /root/anaconda3
+#ENV PATH="/root/anaconda3/bin:${PATH}"
+#RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh &&\
+#    chmod +x Miniconda3-latest-Linux-x86_64.sh &&\
+#    ./Miniconda3-latest-Linux-x86_64.sh -b -p /root/anaconda3
 
 # Create conda environment with dependencies
-COPY environment.yml .
-RUN conda env create -f environment.yml
-SHELL ["conda", "run", "-n", "mvgpubtree", "/bin/bash", "-c"]
+#COPY environment.yml .
+#RUN conda env create -f environment.yml
+#SHELL ["conda", "run", "-n", "mvgpubtree", "/bin/bash", "-c"]
 
 # Clone MVGpuBTree code from github
 RUN git clone https://github.com/owensgroup/MVGpuBTree.git
 
+#RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y hip-runtime-nvidia hip-dev
+
+# Install CMake
+ARG CMAKE_VERSION=3.18.0
+RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh &&\
+    chmod +x cmake-${CMAKE_VERSION}-linux-x86_64.sh &&\
+    mkdir /opt/cmake && \
+    ./cmake-${CMAKE_VERSION}-linux-x86_64.sh  --skip-license --prefix=/opt/cmake  &&\
+    ln -s /opt/cmake/bin/* /usr/local/bin/
+
 # Activate conda
-ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "mvgpubtree"]
+#ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "mvgpubtree"]
 
 # Building the image:
 # docker build -t mvgpubtree .

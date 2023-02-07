@@ -35,8 +35,8 @@
 #include <device_bump_allocator.hpp>
 #include <slab_alloc.hpp>
 
-//#define DEBUG_LOCKS
-// #define DEBUG_STRUCTURE
+// #define DEBUG_LOCKS
+//  #define DEBUG_STRUCTURE
 
 #ifdef DEBUG_STRUCTURE
 #define DEBUG_STRUCTURE_PRINT(fmt, ...)         \
@@ -1024,6 +1024,7 @@ struct gpu_blink_tree {
     double tree_size_gbs = double(num_nodes) * sizeof(node_type<Key, Value, B>) / (1ull << 30);
     return tree_size_gbs;
   }
+  allocator_type allocator_;
 
  private:
   template <typename key_type,
@@ -1124,7 +1125,5 @@ struct gpu_blink_tree {
   size_type* h_node_count_;
 
   size_type* d_root_index_;
-
-  allocator_type allocator_;
 };
 }  // namespace GpuBTree

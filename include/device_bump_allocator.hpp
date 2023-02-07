@@ -18,7 +18,7 @@
 #include <cstdint>
 
 // 67108864 is 8 Gibs when sizeof(T) = 128
-template <class T, std::size_t MaxTCount = 67108864>
+template <class T, std::size_t MaxTCount = 67108864 / 2>
 struct device_bump_allocator {
   using size_type       = uint32_t;
   using difference_type = uint32_t;
