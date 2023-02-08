@@ -1,5 +1,5 @@
 # Use CUDA 11.5 and Ubuntu 20.04 docker image as base image
-FROM nvidia/cuda:11.5.0-devel-ubuntu20.04
+FROM nvidia/cuda:11.8.0-devel-ubuntu20.04
 
 # Install required Ubuntu packages
 RUN apt-get clean && apt-get update -y -qq
@@ -17,7 +17,7 @@ RUN apt-get install -y wget git build-essential
 #SHELL ["conda", "run", "-n", "mvgpubtree", "/bin/bash", "-c"]
 
 # Clone MVGpuBTree code from github
-RUN git clone https://github.com/owensgroup/MVGpuBTree.git
+# RUN git clone https://github.com/owensgroup/MVGpuBTree.git
 
 #RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y hip-runtime-nvidia hip-dev
 

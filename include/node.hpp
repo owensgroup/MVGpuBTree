@@ -20,7 +20,7 @@
 #include <memory_utils.hpp>
 #include <utils.hpp>
 
-//#define DEBUG_NODE
+#define DEBUG_NODE
 template <typename pair_type, typename tile_type, int node_width = 16>
 struct btree_node {
   using key_type                            = typename pair_type::key_type;
@@ -135,7 +135,9 @@ struct btree_node {
 #ifdef DEBUG_NODE
     // Debug: parent must be locked and not full here
     bool parent_is_locked = parent_node.is_locked();
-    cuda_assert(parent_is_locked);
+    if(!parent_is_locked){
+      cuda_assert(parent_is_locked);
+    }
     bool parent_is_full = parent_node.is_full();
     cuda_assert(!parent_is_full);
 #endif
@@ -194,7 +196,10 @@ struct btree_node {
 #ifdef DEBUG_NODE
     // This means that the key was smaller than everything else in the node which means
     // traversal was wrong
-    cuda_assert(next_lane != -1);
+    if(next_lane == -1){
+      printf("next lane = %i, key = %i\n", next_lane, key);
+      cuda_assert(next_lane != -1);
+    }
 #endif
     return next_lane;
   }

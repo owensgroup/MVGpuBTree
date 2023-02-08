@@ -70,9 +70,11 @@ void investigate_tree_deadlock() {
     std::cout << "round " << i << " starting" << std::endl;
 
     GpuBTree::gpu_blink_tree<key_type, value_type, 16> tree;
+    cuda_try(cudaPeekAtLastError());
     modified_insert_kernel<<<(build_size + 511) / 512, 512>>>(keys_on_gpu, build_size, tree);
-
+    cuda_try(cudaPeekAtLastError());
     std::cout << "tree uses " << tree.compute_memory_usage() << " GB" << std::endl;
+    cuda_try(cudaPeekAtLastError());
     std::cout << "round " << i << " done" << std::endl;
   }
 

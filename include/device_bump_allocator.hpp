@@ -48,15 +48,21 @@ struct device_bump_allocator {
     pointer_type new_slab_index       = 0;
     if (tile.thread_rank() == elected_lane) {
       new_slab_index = atomicAdd(d_slab_count_, n);
-      cuda_assert(new_slab_index != max_size_);
+      if(new_slab_index == max_size_){
+        printf("allocate %i out of %lu\n", new_slab_index, max_size_);
+      }
+      // cuda_assert(new_slab_index != max_size_);
     }
     return tile.shfl(new_slab_index, elected_lane);
   }
   DEVICE_QUALIFIER void deallocate(pointer_type p, std::size_t n) noexcept {}
 
   HOST_DEVICE_QUALIFIER value_type* address(pointer_type ptr) const {
+    if(ptr >= max_size_){
+        printf("access %i out of %lu\n", ptr, max_size_);
+    }
 #ifdef __CUDA_ARCH__
-    cuda_assert(ptr < max_size_);
+    // cuda_assert(ptr < max_size_);
 
 #else
     assert(ptr < max_size_);

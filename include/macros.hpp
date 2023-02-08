@@ -29,14 +29,16 @@
     }                                                                                   \
   } while (0)
 
-/*
-#define cuda_assert(expression_result) \
-  if (!expression_result) {            \
-    assert(0);                         \
-  }
-*/
-inline constexpr void cuda_assert(bool expression_result) {
-  if (!expression_result) {
-    // assert(0);
-  }
-}
+#define cuda_assert(expression_result)                                                                  \
+  do {                                                                                  \
+    if (!expression_result) {                                                              \
+      assert(0);                                                            \
+    }                                                                                   \
+  } while (0)
+
+
+// inline constexpr void cuda_assert(bool expression_result) {
+//   if (!expression_result) {
+//     assert(0);
+//   }
+// }

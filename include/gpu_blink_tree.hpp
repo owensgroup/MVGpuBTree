@@ -476,7 +476,12 @@ struct gpu_blink_tree {
     auto parent_index       = root_index;
     bool keep_going         = true;
     bool link_traversed     = false;
+    int iter = 0;
     do {
+      iter++;
+      if(iter >= 100000){
+        printf("Reached 100000 iter -> %i %i -> %i\n", current_node_index, parent_index, int(link_traversed));
+      }
       auto current_node = node_type(
           reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
       current_node.load(cuda_memory_order::memory_order_relaxed);
