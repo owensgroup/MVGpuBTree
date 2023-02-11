@@ -75,6 +75,8 @@ struct device_bump_allocator {
     cuda_try(cudaMemcpy(buffer, d_buffer_, bytes_count, cudaMemcpyDeviceToHost));
   }
 
+  HOST_DEVICE_QUALIFIER T* get_raw_buffer() { return d_buffer_; }
+
  private:
   T* d_buffer_;
   std::shared_ptr<T> buffer_;

@@ -912,16 +912,98 @@ __global__ void insert_kernel(const key_type* keys,
   }
 }
 
-template <typename key_type, typename value_type, typename size_type, typename btree>
+__device__ int get_node_height(uint32_t& node_idx,
+                               uint32_t num_leaves,
+                               uint32_t n,
+                               uint32_t b,
+                               bool& not_last) {
+  for (int level = 0;; level++) {
+    if (node_idx < num_leaves) {
+      not_last = (node_idx != (num_leaves - 1));
+      return level;
+    }
+    node_idx -= num_leaves;
+    int frac = (num_leaves % b) ? 1 : 0;
+    num_leaves >>= n;
+    num_leaves += frac;
+  }
+}
+
+template <typename key_type, typename value_type, typename btree>
 __global__ void bulk_build_kernel(const key_type* keys,
                                   const value_type* values,
-                                  const size_type keys_count,
+                                  const uint32_t num_keys,
+                                  const uint32_t num_nodes,
+                                  const uint32_t num_leaves,
+                                  const uint32_t tree_height,
+                                  const uint32_t bulk_build_branching_factor,
+                                  const uint32_t log_bulk_build_branching_factor,
                                   btree tree) {
-  auto thread_id = threadIdx.x + blockIdx.x * blockDim.x;
-  auto block     = cg::this_thread_block();
-  auto tile      = cg::tiled_partition<btree::branching_factor>(block);
+  // TODO: Is key 0 still reserved?
+  uint32_t tid      = threadIdx.x + blockIdx.x * blockDim.x;
+  uint32_t lane_idx = threadIdx.x & 0x1F;
+  uint32_t node_idx = tid / 32;
 
-  if ((thread_id - tile.thread_rank()) >= keys_count) { return; }
+  if (node_idx >= num_nodes) return;
+
+  uint32_t local_node_idx = node_idx;
+  bool not_last_node      = false;
+
+  uint32_t node_height = get_node_height(local_node_idx,
+                                         num_leaves,
+                                         log_bulk_build_branching_factor,
+                                         bulk_build_branching_factor,
+                                         not_last_node);
+
+  uint32_t hB = powf(bulk_build_branching_factor, node_height);
+
+  uint32_t lane_data = 0;
+
+  if (node_height > 0) {
+    uint32_t first_node = 0;
+    uint32_t num_lev    = num_leaves;
+    for (int i = 0; i < node_height - 1; i++) {
+      first_node += num_lev;
+      int frac = (num_lev % bulk_build_branching_factor) ? 1 : 0;
+      num_lev >>= log_bulk_build_branching_factor;
+      num_lev += frac;
+    }
+    first_node++;
+    uint32_t child_idx = first_node + local_node_idx * bulk_build_branching_factor;
+    if (lane_idx < 16) {
+      uint32_t to_read = local_node_idx * hB * bulk_build_branching_factor + (lane_idx / 2) * hB;
+      if (to_read < num_keys) {
+        child_idx = (child_idx + (lane_idx / 2));
+        lane_data = (lane_idx % 2) ? child_idx : keys[to_read];
+        lane_data = lane_data;
+      }
+    }
+  } else {
+    if (lane_idx < 16) {
+      uint32_t to_read =
+          local_node_idx * hB * bulk_build_branching_factor + (lane_idx / 2) * hB + 1;
+      if (to_read < num_keys) { lane_data = (lane_idx % 2) ? values[to_read] : keys[to_read]; }
+    }
+  }
+  node_idx++;
+  if (not_last_node) {
+    lane_data = (lane_idx == 31) ? node_idx + 1 : lane_data;
+    lane_data = (lane_idx == 30) ? keys[(local_node_idx + 1) * hB * bulk_build_branching_factor]
+                                 : lane_data;
+  }
+
+  node_idx = (node_idx == num_nodes) ? 0 : node_idx;
+
+  if (lane_idx == 32 && node_height == 0) {
+    lane_idx = lane_idx & 0x7fffffff;  // not locked and is leaf
+  } else if (lane_idx == 32 && node_height != 0) {
+    lane_idx = lane_idx & 0x3fffffff;  // not locked and not leaf
+  }
+
+  using allocator_type      = typename btree::device_allocator_context_type;
+  uint32_t* raw_tree_buffer = reinterpret_cast<uint32_t*>(tree.allocator_.get_raw_buffer());
+
+  raw_tree_buffer[node_idx * btree::branching_factor * 2 + lane_idx] = lane_data;
 }
 
 }  // namespace kernels
