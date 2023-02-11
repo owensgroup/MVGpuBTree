@@ -1,6 +1,14 @@
 project (test)
 
 
+# bulk build
+add_executable(test_bulk_build test_bulk_build.cu)
+set_target_properties(test_bulk_build PROPERTIES
+								FOLDER "tests")
+target_link_libraries(test_bulk_build PRIVATE gpu_btrees)
+
+
+
 # concurrent insert range query
 add_executable(concurrent_insert_rq_vtree concurrent_insert_rq_vtree.cu)
 set_target_properties(concurrent_insert_rq_vtree PROPERTIES
