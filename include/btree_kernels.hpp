@@ -957,7 +957,7 @@ __global__ void bulk_build_kernel(const key_type* keys,
 
   uint32_t hB = powf(bulk_build_branching_factor, node_height);
 
-  uint32_t lane_data = 0;
+  uint32_t lane_data = btree::invalid_key;
 
   if (node_height > 0) {
     uint32_t first_node = 0;
@@ -974,36 +974,54 @@ __global__ void bulk_build_kernel(const key_type* keys,
       uint32_t to_read = local_node_idx * hB * bulk_build_branching_factor + (lane_idx / 2) * hB;
       if (to_read < num_keys) {
         child_idx = (child_idx + (lane_idx / 2));
-        lane_data = (lane_idx % 2) ? child_idx : keys[to_read];
+        if (to_read == 0) {
+          lane_data = (lane_idx % 2) ? child_idx : 0;
+        } else {
+          lane_data = (lane_idx % 2) ? child_idx : keys[to_read - 1];
+        }
         lane_data = lane_data;
       }
     }
   } else {
     if (lane_idx < 16) {
-      uint32_t to_read =
-          local_node_idx * hB * bulk_build_branching_factor + (lane_idx / 2) * hB + 1;
-      if (to_read < num_keys) { lane_data = (lane_idx % 2) ? values[to_read] : keys[to_read]; }
+      uint32_t to_read = local_node_idx * hB * bulk_build_branching_factor + (lane_idx / 2) * hB;
+      if (to_read < num_keys) {
+        if (to_read == 0) {
+          lane_data = (lane_idx % 2) ? 0 : 0;
+        } else {
+          lane_data = (lane_idx % 2) ? values[to_read - 1] : keys[to_read - 1];
+        }
+      }
     }
   }
   node_idx++;
   if (not_last_node) {
     lane_data = (lane_idx == 31) ? node_idx + 1 : lane_data;
-    lane_data = (lane_idx == 30) ? keys[(local_node_idx + 1) * hB * bulk_build_branching_factor]
+    lane_data = (lane_idx == 30) ? keys[(local_node_idx + 1) * hB * bulk_build_branching_factor - 1]
                                  : lane_data;
   }
 
   node_idx = (node_idx == num_nodes) ? 0 : node_idx;
 
-  if (lane_idx == 32 && node_height == 0) {
-    lane_idx = lane_idx & 0x7fffffff;  // not locked and is leaf
-  } else if (lane_idx == 32 && node_height != 0) {
-    lane_idx = lane_idx & 0x3fffffff;  // not locked and not leaf
-  }
+  const uint32_t bits_per_byte   = 8;
+  const uint32_t lock_bit_offset = sizeof(key_type) * bits_per_byte - 1;
+  const uint32_t leaf_bit_offset = lock_bit_offset - 1;
+  const uint32_t lock_bit_mask   = 1u << lock_bit_offset;
+  const uint32_t leaf_bit_mask   = 1u << leaf_bit_offset;
 
+  if (lane_idx == 31 && node_height == 0) {
+    lane_data = lane_data | leaf_bit_mask;     // set_leaf_bit
+    lane_data = lane_data & (~lock_bit_mask);  // unset_lock_bit
+  }
+  if (lane_idx == 31 && node_height != 0) {
+    lane_data = lane_data & (~leaf_bit_mask);  // unset_leaf_bit
+    lane_data = lane_data & (~lock_bit_mask);  // unset_lock_bit
+  }
   using allocator_type      = typename btree::device_allocator_context_type;
   uint32_t* raw_tree_buffer = reinterpret_cast<uint32_t*>(tree.allocator_.get_raw_buffer());
 
   raw_tree_buffer[node_idx * btree::branching_factor * 2 + lane_idx] = lane_data;
+  if (tid == 0) { tree.allocator_.set_allocated_count(num_nodes); }
 }
 
 }  // namespace kernels
