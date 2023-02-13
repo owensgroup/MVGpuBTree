@@ -35,8 +35,8 @@
 #include <device_bump_allocator.hpp>
 #include <slab_alloc.hpp>
 
-//#define DEBUG_LOCKS
-// #define DEBUG_STRUCTURE
+// #define DEBUG_LOCKS
+//  #define DEBUG_STRUCTURE
 
 #ifdef DEBUG_STRUCTURE
 #define DEBUG_STRUCTURE_PRINT(fmt, ...)         \
@@ -81,6 +81,60 @@ struct gpu_blink_tree {
                   "Size of key must be the same as the size of the value");
     allocate();
   }
+  // Bulk build is only supported for device_bump_allocator
+  gpu_blink_tree(const Key* keys,
+                 const Value* values,
+                 const size_type num_keys,
+                 const bool sorted_input = false,
+                 cudaStream_t stream     = 0)
+      : allocator_{} {
+    static_assert(sizeof(Key) == sizeof(Value),
+                  "Size of key must be the same as the size of the value");
+    allocate();
+
+    // Build a half-full tree
+    static constexpr uint32_t bulk_build_branching_factor     = 8;
+    static constexpr uint32_t log_bulk_build_branching_factor = 3;
+
+    size_type num_keys_and_zero = num_keys + 1;  // tree must include the minimum possible key
+
+    uint32_t num_leaves = (num_keys_and_zero % bulk_build_branching_factor)
+                              ? num_keys_and_zero / bulk_build_branching_factor + 1
+                              : num_keys_and_zero / bulk_build_branching_factor;
+    uint32_t num_nodes          = num_leaves;
+    uint32_t num_interior_nodes = num_leaves;
+
+    uint32_t tree_height = 0;
+    for (tree_height = 0; num_interior_nodes != 1; tree_height++) {
+      int frac = (num_interior_nodes % bulk_build_branching_factor) ? 1 : 0;
+      num_interior_nodes >>= log_bulk_build_branching_factor;
+      num_interior_nodes += frac;
+      num_nodes += num_interior_nodes;
+      if (num_interior_nodes == 1) break;
+    }
+    tree_height += 2;
+
+    static_assert(branching_factor == 16);
+
+    const uint32_t block_size = 256;
+    const uint32_t num_blocks = (num_nodes * 32 + block_size - 1) / block_size;
+
+    if (!sorted_input) {
+      std::cout << "Only sorted input is supported" << std::endl;
+      std::terminate();
+    }
+    kernels::bulk_build_kernel<<<num_blocks, block_size, 0, stream>>>(
+        keys,
+        values,
+        num_keys_and_zero,
+        num_nodes,
+        num_leaves,
+        tree_height,
+        bulk_build_branching_factor,
+        log_bulk_build_branching_factor,
+        *this);
+  }
+
   gpu_blink_tree(const gpu_blink_tree& other)
       : root_index_(other.root_index_)
       , h_btree_(other.h_btree_)
@@ -860,7 +914,7 @@ struct gpu_blink_tree {
 
     for (size_t lane = 0; lane < branching_factor; lane++) {
       bool ptr_lane    = lane == (branching_factor - 1);
-      bool ts_lane     = lane == (branching_factor - 2);
+      bool ts_lane     = false;
       key_type key     = node[lane].first;
       value_type value = node[lane].second;
 
@@ -916,7 +970,7 @@ struct gpu_blink_tree {
       auto ptr         = connectivity[lane];
       auto is_valid    = ptr != empty_pointer;
       bool ptr_lane    = lane == (branching_factor - 1);
-      bool ts_lane     = lane == (branching_factor - 2);
+      bool ts_lane     = false;
       auto target_lane = ptr_lane ? 0 : (branching_factor >> 1);
       target_lane      = ts_lane ? branching_factor - 2 : target_lane;
       if (is_valid) {
@@ -1054,6 +1108,17 @@ struct gpu_blink_tree {
                                                 const value_type*,
                                                 const size_type,
                                                 btree);
+
+  template <typename key_type, typename value_type, typename btree>
+  friend __global__ void kernels::bulk_build_kernel(const key_type*,
+                                                    const value_type*,
+                                                    const uint32_t,
+                                                    const uint32_t,
+                                                    const uint32_t,
+                                                    const uint32_t,
+                                                    const uint32_t,
+                                                    const uint32_t,
+                                                    btree);
   template <typename btree>
   friend __global__ void kernels::initialize_kernel(btree);
 
@@ -1126,5 +1191,5 @@ struct gpu_blink_tree {
   size_type* d_root_index_;
 
   allocator_type allocator_;
-};
+};  // namespace GpuBTree
 }  // namespace GpuBTree
