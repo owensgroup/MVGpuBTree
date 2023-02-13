@@ -22,10 +22,14 @@
 #include <cmd.hpp>
 #include <vector>
 
+#include <numeric>
+
 int main(int argc, char** argv) {
-  auto arguments    = std::vector<std::string>(argv, argv + argc);
-  uint32_t num_keys = get_arg_value<uint32_t>(arguments, "num-keys").value_or(1'000'000);
-  bool validate     = get_arg_value<bool>(arguments, "validate").value_or(true);
+  auto arguments      = std::vector<std::string>(argv, argv + argc);
+  uint32_t num_keys   = get_arg_value<uint32_t>(arguments, "num-keys").value_or(1'000'000);
+  uint32_t batch_size = get_arg_value<uint32_t>(arguments, "batch-size").value_or(num_keys);
+  bool validate       = get_arg_value<bool>(arguments, "validate").value_or(true);
+  bool plot           = get_arg_value<bool>(arguments, "plot").value_or(false);
 
   static constexpr uint32_t branching_factor = 16;
 
@@ -43,7 +47,8 @@ int main(int argc, char** argv) {
   auto d_keys   = thrust::device_vector<key_type>(num_keys, invalid_key);
   auto d_values = thrust::device_vector<value_type>(num_keys, invalid_value);
 
-  thrust::sequence(d_keys.begin(), d_keys.end(), key_type{0});
+  // key zero is not allowed, so  key_type{1} is the minimum key possible
+  thrust::sequence(d_keys.begin(), d_keys.end(), key_type{1});
 
   auto to_value = [] __host__ __device__(key_type x) { return x * 10; };
   thrust::transform(d_keys.begin(), d_keys.end(), d_values.begin(), to_value);
@@ -51,6 +56,25 @@ int main(int argc, char** argv) {
   using tree_type =
       GpuBTree::gpu_blink_tree<key_type, value_type, branching_factor, bump_allocator_type>;
 
-  const bool input_is_sorted = true;
-  tree_type tree(d_keys.data().get(), d_values.data().get(), num_keys, input_is_sorted);
+  const bool input_is_sorted = true;  // only sorted key is supported currently
+  tree_type tree(d_keys.data().get(), d_values.data().get(), batch_size, input_is_sorted);
+
+  if (validate) {
+    auto h_keys = std::vector<key_type>(batch_size, invalid_key);
+    std::iota(h_keys.begin(), h_keys.end(), key_type{1});
+    tree.validate_tree_structure(h_keys, to_value);
+  }
+  if (plot) { tree.plot_dot("first_batch_tree"); }
+  if (num_keys > batch_size) {
+    tree.insert(d_keys.data().get() + batch_size,
+                d_values.data().get() + batch_size,
+                num_keys - batch_size);
+    if (plot) { tree.plot_dot("second_batch_tree"); }
+
+    if (validate) {
+      auto h_keys = std::vector<key_type>(num_keys, invalid_key);
+      std::iota(h_keys.begin(), h_keys.end(), key_type{1});
+      tree.validate_tree_structure(h_keys, to_value);
+    }
+  }
 }

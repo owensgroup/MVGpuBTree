@@ -96,9 +96,11 @@ struct gpu_blink_tree {
     static constexpr uint32_t bulk_build_branching_factor     = 8;
     static constexpr uint32_t log_bulk_build_branching_factor = 3;
 
-    uint32_t num_leaves = (num_keys % bulk_build_branching_factor)
-                              ? num_keys / bulk_build_branching_factor + 1
-                              : num_keys / bulk_build_branching_factor;
+    size_type num_keys_and_zero = num_keys + 1;  // tree must include the minimum possible key
+
+    uint32_t num_leaves = (num_keys_and_zero % bulk_build_branching_factor)
+                              ? num_keys_and_zero / bulk_build_branching_factor + 1
+                              : num_keys_and_zero / bulk_build_branching_factor;
     uint32_t num_nodes          = num_leaves;
     uint32_t num_interior_nodes = num_leaves;
 
@@ -124,7 +126,7 @@ struct gpu_blink_tree {
     kernels::bulk_build_kernel<<<num_blocks, block_size, 0, stream>>>(
         keys,
         values,
-        num_keys,
+        num_keys_and_zero,
         num_nodes,
         num_leaves,
         tree_height,
@@ -912,7 +914,7 @@ struct gpu_blink_tree {
 
     for (size_t lane = 0; lane < branching_factor; lane++) {
       bool ptr_lane    = lane == (branching_factor - 1);
-      bool ts_lane     = lane == (branching_factor - 2);
+      bool ts_lane     = false;
       key_type key     = node[lane].first;
       value_type value = node[lane].second;
 
@@ -968,7 +970,7 @@ struct gpu_blink_tree {
       auto ptr         = connectivity[lane];
       auto is_valid    = ptr != empty_pointer;
       bool ptr_lane    = lane == (branching_factor - 1);
-      bool ts_lane     = lane == (branching_factor - 2);
+      bool ts_lane     = false;
       auto target_lane = ptr_lane ? 0 : (branching_factor >> 1);
       target_lane      = ts_lane ? branching_factor - 2 : target_lane;
       if (is_valid) {
