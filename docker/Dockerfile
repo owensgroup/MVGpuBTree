@@ -4,6 +4,15 @@ FROM nvidia/cuda:11.5.0-devel-ubuntu20.04
 # Install required Ubuntu packages
 RUN apt-get clean && apt-get update -y -qq
 RUN apt-get install -y wget git build-essential
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y graphviz python-is-python3
+
+# Install cmake
+ARG CMAKE_VERSION=3.25.1
+RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.sh &&\
+    chmod +x cmake-${CMAKE_VERSION}-linux-x86_64.sh &&\
+    mkdir /opt/cmake && \
+    ./cmake-${CMAKE_VERSION}-linux-x86_64.sh  --skip-license --prefix=/opt/cmake  &&\
+    ln -s /opt/cmake/bin/* /usr/local/bin/
 
 # Install conda
 ENV PATH="/root/anaconda3/bin:${PATH}"
@@ -12,7 +21,7 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh &
     ./Miniconda3-latest-Linux-x86_64.sh -b -p /root/anaconda3
 
 # Create conda environment with dependencies
-COPY environment.yml .
+COPY docker/environment.yml .
 RUN conda env create -f environment.yml
 SHELL ["conda", "run", "-n", "mvgpubtree", "/bin/bash", "-c"]
 
