@@ -7,6 +7,9 @@
 #include<thrust/sequence.h>
 
 #include <cooperative_groups.h>
+
+#include <rkg.hpp>
+
 namespace cg = cooperative_groups;
 
 template <typename key_type, typename size_type, typename btree>
@@ -107,12 +110,43 @@ void investigate_tree_deadlock_v1(uint32_t build_size) {
 
 }
 
+
+void investigate_tree_deadlock_v2(uint32_t build_size) {
+  using key_type   = uint32_t;
+  using value_type = uint32_t;
+
+
+  int seed = 42;
+  bool cache = true;
+
+  std::cout << "Generating " << build_size << " keys.." << std::endl;
+  auto d_keys = rkg::generate_random_keys<key_type>(build_size, seed, cache);
+
+  auto keys_on_gpu = d_keys.data().get();
+  for (size_t i = 0; i < 10000; ++i) {
+    std::cout << "round " << i << " starting" << std::endl;
+
+    GpuBTree::gpu_blink_tree<key_type, value_type, 16> tree;
+    cuda_try(cudaPeekAtLastError());
+    modified_insert_kernel<<<(build_size + 511) / 512, 512>>>(keys_on_gpu, build_size, tree);
+    cuda_try(cudaPeekAtLastError());
+    std::cout << "tree uses " << tree.compute_memory_usage() << " GB" << std::endl;
+    cuda_try(cudaPeekAtLastError());
+    std::cout << "round " << i << " done" << std::endl;
+  }
+
+  cudaFree(keys_on_gpu);
+}
+
+
 int main(int argc, char** argv) {
 
   uint32_t num_keys = uint32_t{1} << 25;
   if(argc >= 2){
     num_keys = std::atoi(argv[1]);
   }
-  investigate_tree_deadlock_v1(num_keys);
+  // investigate_tree_deadlock(num_keys);   // initial bug submission
+  // investigate_tree_deadlock_v1(num_keys); // other simpler test cases
+  investigate_tree_deadlock_v2(num_keys); // // bug w/ accelerated key generation
   return 0;
 }

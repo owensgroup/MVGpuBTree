@@ -96,4 +96,56 @@ inline std::vector<key_type> generate_keys(const uint32_t num_keys,
   return keys;
 }
 
+template <typename key_type>
+inline thrust::device_vector<key_type> generate_random_keys(const uint32_t num_keys,
+                                                    const int seed,
+                                                    const bool cache = false){
+  std::string dataset_dir = "dataset";
+  std::string dataset_name = std::to_string(num_keys) + "_" + std::to_string(seed);
+  std::string dataset_path = dataset_dir + "/" + dataset_name;
+
+  std::vector<key_type> keys(num_keys);
+
+  if (cache) {
+    if (std::filesystem::exists(dataset_dir)) {
+      if (std::filesystem::exists(dataset_path)) {
+        std::cout << "Reading cached keys.." << std::endl;
+        std::ifstream dataset(dataset_path, std::ios::binary);
+        dataset.read((char*)keys.data(), sizeof(key_type) * num_keys);
+        dataset.close();
+        thrust::device_vector<key_type> d_keys(keys);
+        return std::move(d_keys);
+      }
+    } else {
+      std::filesystem::create_directory(dataset_dir);
+    }
+  }
+
+
+  key_type min_usable_key = 1;
+  key_type max_usable_key = std::numeric_limits<key_type>::max() - 2;
+
+  std::mt19937_64 gen(seed);
+  std::uniform_int_distribution<key_type> key_dist(min_usable_key, max_usable_key);
+
+  std::unordered_set<key_type> build_keys_set;
+  while (build_keys_set.size() < num_keys) {
+    key_type key = key_dist(gen);
+    build_keys_set.insert(key);
+  }
+
+  std::copy(build_keys_set.begin(), build_keys_set.end(), keys.begin());
+  thrust::device_vector<key_type> d_keys(keys);
+  thrust::sort(d_keys.begin(), d_keys.end());
+
+  if (cache) {
+    std::cout << "Caching.." << std::endl;
+    std::ofstream dataset(dataset_path, std::ios::binary);
+    thrust::host_vector<key_type> sorted_keys(d_keys);
+    dataset.write((char*)sorted_keys.data(), sizeof(key_type) * num_keys);
+    dataset.close();
+  }
+
+  return std::move(d_keys);
+}
 }  // namespace rkg
