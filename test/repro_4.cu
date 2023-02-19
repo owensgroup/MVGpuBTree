@@ -3,6 +3,9 @@
 #include <random>
 #include <unordered_set>
 
+#include<thrust/device_vector.h>
+#include<thrust/sequence.h>
+
 #include <cooperative_groups.h>
 namespace cg = cooperative_groups;
 
@@ -42,11 +45,10 @@ __global__ void modified_insert_kernel(const key_type* keys,
   }
 }
 
-void investigate_tree_deadlock() {
+void investigate_tree_deadlock(uint32_t build_size) {
   using key_type   = uint32_t;
   using value_type = uint32_t;
 
-  size_t build_size       = size_t{1} << 25;
   key_type min_usable_key = 1;
   key_type max_usable_key = std::numeric_limits<key_type>::max() - 2;
 
@@ -54,7 +56,7 @@ void investigate_tree_deadlock() {
   std::uniform_int_distribution<key_type> key_dist(min_usable_key, max_usable_key);
   std::vector<key_type> build_keys(build_size);
   std::unordered_set<key_type> build_keys_set;
-  std::cout << "Generating keys.." << std::endl;
+  std::cout << "Generating " << build_size << " keys.." << std::endl;
 
   while (build_keys_set.size() < build_size) {
     key_type key = key_dist(gen);
@@ -81,7 +83,36 @@ void investigate_tree_deadlock() {
   cudaFree(keys_on_gpu);
 }
 
-int main() {
-  investigate_tree_deadlock();
+
+void investigate_tree_deadlock_v1(uint32_t build_size) {
+  using key_type   = uint32_t;
+  using value_type = uint32_t;
+
+  key_type min_usable_key = 1;
+
+  std::cout << "Generating " << build_size << " keys.." << std::endl;
+  thrust::device_vector<key_type> build_keys(build_size);
+  thrust::sequence(build_keys.begin(), build_keys.end(), min_usable_key);
+  for (size_t i = 0; i < 10000; ++i) {
+    std::cout << "round " << i << " starting" << std::endl;
+
+    GpuBTree::gpu_blink_tree<key_type, value_type, 16> tree;
+    cuda_try(cudaPeekAtLastError());
+    modified_insert_kernel<<<(build_size + 511) / 512, 512>>>(build_keys.data().get(), build_size, tree);
+    cuda_try(cudaPeekAtLastError());
+    std::cout << "tree uses " << tree.compute_memory_usage() << " GB" << std::endl;
+    cuda_try(cudaPeekAtLastError());
+    std::cout << "round " << i << " done" << std::endl;
+  }
+
+}
+
+int main(int argc, char** argv) {
+
+  uint32_t num_keys = uint32_t{1} << 25;
+  if(argc >= 2){
+    num_keys = std::atoi(argv[1]);
+  }
+  investigate_tree_deadlock_v1(num_keys);
   return 0;
 }
