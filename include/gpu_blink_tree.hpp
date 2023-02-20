@@ -476,11 +476,14 @@ struct gpu_blink_tree {
     auto parent_index       = root_index;
     bool keep_going         = true;
     bool link_traversed     = false;
-    int iter = 0;
+    int iter                = 0;
     do {
       iter++;
-      if(iter >= 100000){
-        printf("Reached 100000 iter -> %i %i -> %i\n", current_node_index, parent_index, int(link_traversed));
+      if (iter >= 100000) {
+        printf("Reached 100000 iter -> %i %i -> %i\n",
+               current_node_index,
+               parent_index,
+               int(link_traversed));
       }
       auto current_node = node_type(
           reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)), tile);
@@ -512,12 +515,16 @@ struct gpu_blink_tree {
 
           // traversal while holding the lock
           while (key >= current_node.get_high_key()) {
-            if (is_leaf) { current_node.unlock(); }
+            // if (is_leaf) { current_node.unlock(); }
             current_node_index = current_node.get_sibling_index();
-            current_node       = node_type(
+            auto sibling_node  = node_type(
                 reinterpret_cast<pair_type*>(allocator.address(allocator_, current_node_index)),
                 tile);
-            if (is_leaf) { current_node.lock(); }
+            if (is_leaf) {
+              sibling_node.lock();
+              current_node.unlock();
+            }
+            current_node = sibling_node;
             current_node.load(cuda_memory_order::memory_order_relaxed);
             is_leaf = current_node.is_leaf();
             // if the node is not a leaf anymore, we don't need the lock
