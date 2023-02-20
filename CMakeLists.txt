@@ -54,6 +54,7 @@ set(CUDA_FLAGS
     # $<$<CONFIG:Release>:-Xptxas -warn-spills -res-usage>
     -Xptxas -warn-spills
     -res-usage
+    # -g -G
     )
 
 

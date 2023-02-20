@@ -130,9 +130,10 @@ void investigate_tree_deadlock_v2(uint32_t build_size) {
     cuda_try(cudaPeekAtLastError());
     modified_insert_kernel<<<(build_size + 511) / 512, 512>>>(keys_on_gpu, build_size, tree);
     cuda_try(cudaPeekAtLastError());
-    std::cout << "tree uses " << tree.compute_memory_usage() << " GB" << std::endl;
-    cuda_try(cudaPeekAtLastError());
+    // std::cout << "tree uses " << tree.compute_memory_usage() << " GB" << std::endl;
+    // cuda_try(cudaPeekAtLastError());
     std::cout << "round " << i << " done" << std::endl;
+    cuda_try(cudaDeviceSynchronize());
   }
 
   cudaFree(keys_on_gpu);
