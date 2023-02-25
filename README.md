@@ -50,7 +50,7 @@ void foo(){
   auto found_value = vtree.cooperative_find(key, tile, snapshot_id, ...);
   assert(found_value == value);
  });
-}
+};
 ```
 
 The previous example illustrates our vision for using GPU data structures. To a large extent, we can do most of these operations using current CUDA/C++ abstractions and compilers; however, some of the APIs, such as memory allocators and reclaimers (especially on-device ones), still lack adequate support and standardization.  
