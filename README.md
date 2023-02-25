@@ -1,4 +1,4 @@
-# [GPU Multiversion B-Tree](https://dl.acm.org/doi/10.1145/3559009.3569681)
+# [Fully Concurrent GPU Multiversion B-Tree](https://dl.acm.org/doi/10.1145/3559009.3569681)
 
 
 <table><tr>
@@ -12,7 +12,9 @@
 ![Multiversion B-Tree](/docs/vbtree-nobg.png)
 
 
-A GPU B-Tree that supports versioning (snapshots) and linearizable multipoint queries.
+A fully concurrent GPU B-Tree that supports versioning (snapshots) and linearizable multipoint queries. Using our data structure and the tools we provide, you can launch one (or more) kernels where inside each kernel, you concurrently perform queries (e.g., point or range queries) and mutations (e.g., insert or update).
+
+
 For more information, please check our PACT 2022 paper:
 
 [**A GPU Multiversion B-Tree**](https://dl.acm.org/doi/10.1145/3559009.3569681)<br>
@@ -21,7 +23,37 @@ For more information, please check our PACT 2022 paper:
 The repository also contains:
 1. [An implementation of our epoch-based memory reclamation strategy](https://github.com/owensgroup/MVGpuBTree/blob/main/include/memory_reclaimer.hpp)
 2. [SlabAlloc memory allocator redesigned to allow building more complex allocators via composition](https://github.com/owensgroup/MVGpuBTree/blob/main/include/slab_alloc.hpp)
-3. [Improved implementation of our B-Tree (reference B-Tree that doesn't support snapshots)](https://github.com/owensgroup/MVGpuBTree/blob/main/include/gpu_blink_tree.hpp).
+3. [Improved implementation of our B-Tree (reference B-Tree that doesn't support snapshots)](https://github.com/owensgroup/MVGpuBTree/blob/main/include/gpu_blink_tree.hpp)[^1].
+
+### Our vision
+
+GPU data structures such as the multiversion GPU B-Tree and other data structures we developed[^1][^2] should facilitate using them in the following conscience and elegant manner:
+
+```c++
+#include<gpu_versioned_blink_tree.hpp>
+#include<thrust/device_vector.hpp>
+#include<thrust/for_each.hpp>
+
+void foo(){
+ using key_t = uint32_t; using value_t = uint32_t;
+ using tree_t = GpuBTree::gpu_versioned_blink_tree<key_t, value_t>;
+ 
+ tree_t vtree(....); // call the data structure constructor 
+ thrust::device_vector<key_t> keys(....); // initialize keys
+ // do concurrent operations in a fully concurrent manner
+ thrust::for_each(keys.begin(), keys.end(), [vtree](auto key){ 
+  auto block = cooperative_groups::this_thread_block();
+  auto tile = cooperative_groups::tiled_partition<tree_t::branching_factor>(block);
+  auto value = ...;
+  vtree.cooperative_insert(key, value, tile, ...);
+  auto snapshot_id = vtree.take_snapshot();
+  auto found_value = vtree.cooperative_find(key, tile, snapshot_id, ...);
+  assert(found_value == value);
+ });
+}
+```
+
+The previous example illustrates our vision for using GPU data structures. To a large extent, we can do most of these operations using current CUDA/C++ abstractions and compilers; however, some of the APIs, such as memory allocators and reclaimers (especially on-device ones), still lack adequate support and standardization.  
 
 
 
@@ -58,3 +90,7 @@ Please create an issue. We will welcome any contributions that improve the usabi
   doi = {10.1145/3559009.3569681}
  }
 ```
+
+
+[^1]: [Awad et al., Engineering a high-performance GPU B-Tree](https://escholarship.org/uc/item/1ph2x5td), https://github.com/owensgroup/GpuBTree
+[^2]: [Awad et al., Analyzing and Implementing GPU Hash Tables](https://escholarship.org/uc/item/6cb1q6rz), https://github.com/owensgroup/BGHT
