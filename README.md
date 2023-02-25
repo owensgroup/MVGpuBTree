@@ -34,7 +34,8 @@ GPU data structures such as the multiversion GPU B-Tree and other data structure
 #include<thrust/device_vector.hpp>
 #include<thrust/for_each.hpp>
 
-void foo(){
+int main(){
+
  using key_t = uint32_t; using value_t = uint32_t;
  using tree_t = GpuBTree::gpu_versioned_blink_tree<key_t, value_t>;
  
@@ -42,15 +43,16 @@ void foo(){
  thrust::device_vector<key_t> keys(....); // initialize keys
  // do concurrent operations in a fully concurrent manner
  thrust::for_each(keys.begin(), keys.end(), [vtree](auto key){ 
+  // perform operations in a tile-synchronous way
   auto block = cooperative_groups::this_thread_block();
   auto tile = cooperative_groups::tiled_partition<tree_t::branching_factor>(block);
   auto value = ...;
-  vtree.cooperative_insert(key, value, tile, ...);
-  auto snapshot_id = vtree.take_snapshot();
-  auto found_value = vtree.cooperative_find(key, tile, snapshot_id, ...);
+  vtree.cooperative_insert(key, value, tile, ...); // insert
+  auto snapshot_id = vtree.take_snapshot(); // take snapshot
+  auto found_value = vtree.cooperative_find(key, tile, snapshot_id, ...); // query
   assert(found_value == value);
  });
-};
+}
 ```
 
 The previous example illustrates our vision for using GPU data structures. To a large extent, we can do most of these operations using current CUDA/C++ abstractions and compilers; however, some of the APIs, such as memory allocators and reclaimers (especially on-device ones), still lack adequate support and standardization.  
