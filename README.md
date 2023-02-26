@@ -41,6 +41,7 @@ int main(){
  
  tree_t vtree(....); // call the data structure constructor 
  thrust::device_vector<key_t> keys(....); // initialize keys
+ 
  // do concurrent operations in a fully concurrent manner
  thrust::for_each(keys.begin(), keys.end(), [vtree](auto key){ 
   // perform operations in a tile-synchronous way
