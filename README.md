@@ -27,7 +27,7 @@ The repository also contains:
 
 ### Our vision
 
-GPU data structures such as the multiversion GPU B-Tree and other data structures we developed[^1][^2] should facilitate using them in the following conscience and elegant manner:
+GPU data structures such as the multiversion GPU B-Tree and other data structures we developed[^1][^2] should facilitate using them in the following concise and elegant manner:
 
 ```c++
 #include<gpu_versioned_blink_tree.hpp>
