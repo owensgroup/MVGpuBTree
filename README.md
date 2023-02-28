@@ -42,21 +42,24 @@ int main(){
  tree_t vtree(....); // call the data structure constructor 
  thrust::device_vector<key_t> keys(....); // initialize keys
  
- // do concurrent operations in a fully concurrent manner
+ // solve a problem and do concurrent operations in a fully concurrent manner
  thrust::for_each(keys.begin(), keys.end(), [vtree](auto key){ 
   // perform operations in a tile-synchronous way
   auto block = cooperative_groups::this_thread_block();
   auto tile = cooperative_groups::tiled_partition<tree_t::branching_factor>(block);
+  // ... problem-specific code
   auto value = ...;
   vtree.cooperative_insert(key, value, tile, ...); // insert
+  // ... maybe more problem-specific application code
   auto snapshot_id = vtree.take_snapshot(); // take snapshot
+  // ... maybe even more problem-specific code
   auto found_value = vtree.cooperative_find(key, tile, snapshot_id, ...); // query
-  assert(found_value == value);
+  // ... maybe even more problem-specific code
  });
 }
 ```
 
-The previous example illustrates our vision for using GPU data structures. To a large extent, we can do most of these operations using current CUDA/C++ abstractions and compilers; however, some of the APIs, such as memory allocators and reclaimers (especially on-device ones), still lack adequate support and standardization.  
+The previous example illustrates our vision for using GPU data structures. To a large extent, we can do most of these operations using current CUDA/C++ abstractions and compilers; however, some of the APIs, such as memory allocators and reclaimers (especially on-device ones), still lack adequate support and standardization. BGHT[^2] provides the same device-side APIs and will require almost zero modifications to run the example snippet above.
 
 
 
