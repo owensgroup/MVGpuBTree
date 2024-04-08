@@ -83,20 +83,44 @@ To reproduce the results, follow the following [steps](reproduce.md). Our [PACT 
 Please create an issue. We will welcome any contributions that improve the usability and quality of our repository.
 
 ## BibTeX
-```bibtex
-@inproceedings{Awad:2022:AGM,
-  author = {Muhammad A. Awad and Serban D. Porumbescu and John D. Owens},
-  title = {A {GPU} Multiversion {B}-Tree},
-  booktitle = {Proceedings of the International Conference on Parallel
-              Architectures and Compilation Techniques},
-  series = {PACT 2022},
-  year = 2022,
-  month = oct,
-  code = {https://github.com/owensgroup/MVGpuBTree},
-  doi = {10.1145/3559009.3569681}
- }
-```
 
+The code in this repository is based on our Multiversion GPU B-Tree and GPU B-Tree publications:
+
+```bibtex
+@InProceedings{   Awad:2022:AGM,
+  author        = {Muhammad A. Awad and Serban D. Porumbescu and John D.
+                  Owens},
+  title         = {A {GPU} Multiversion {B}-Tree},
+  booktitle     = {Proceedings of the International Conference on Parallel
+                  Architectures and Compilation Techniques},
+  series        = {PACT 2022},
+  year          = 2022,
+  month         = oct,
+  code          = {https://github.com/owensgroup/MVGpuBTree},
+  doi           = {10.1145/3559009.3569681},
+  url           = {https://escholarship.org/uc/item/4mz5t5b7},
+  ucdcite       = {a146}
+}
+```
+```bibtex
+@InProceedings{   Awad:2019:EAH,
+  author        = {Muhammad A. Awad and Saman Ashkiani and Rob Johnson and
+                  Mart\'{\i}n Farach-Colton and John D. Owens},
+  title         = {Engineering a High-Performance {GPU} {B}-Tree},
+  booktitle     = {Proceedings of the 24th ACM SIGPLAN Symposium on
+                  Principles and Practice of Parallel Programming},
+  series        = {PPoPP 2019},
+  year          = 2019,
+  month         = feb,
+  pages         = {145--157},
+  acceptance    = {29 of 152 submissions, 19.1\%},
+  doi           = {10.1145/3293883.3295706},
+  acmauthorize  = {https://dl.acm.org/doi/10.1145/3293883.3295706?cid=81100458295},
+  url           = {https://escholarship.org/uc/item/1ph2x5td},
+  code          = {https://github.com/owensgroup/GpuBTree},
+  ucdcite       = {a127}
+}
+```
 
 [^1]: [Awad et al., Engineering a high-performance GPU B-Tree](https://escholarship.org/uc/item/1ph2x5td), https://github.com/owensgroup/GpuBTree
 [^2]: [Awad et al., Analyzing and Implementing GPU Hash Tables](https://escholarship.org/uc/item/6cb1q6rz), https://github.com/owensgroup/BGHT
