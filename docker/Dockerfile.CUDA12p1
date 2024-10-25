@@ -21,15 +21,15 @@ RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh &
     ./Miniconda3-latest-Linux-x86_64.sh -b -p /root/anaconda3
 
 # Create conda environment with dependencies
-# COPY docker/environment.yml .
-# RUN conda env create -f environment.yml
-# SHELL ["conda", "run", "-n", "mvgpubtree", "/bin/bash", "-c"]
+COPY docker/environment.yml .
+RUN conda env create -f environment.yml
+SHELL ["conda", "run", "-n", "mvgpubtree", "/bin/bash", "-c"]
 
-# # Clone MVGpuBTree code from github
-# RUN git clone https://github.com/owensgroup/MVGpuBTree.git
+# Clone MVGpuBTree code from github
+RUN git clone https://github.com/owensgroup/MVGpuBTree.git
 
-# # Activate conda
-# ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "mvgpubtree"]
+# Activate conda
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "mvgpubtree"]
 
 # Building the image:
 # docker build -t mvgpubtree .
