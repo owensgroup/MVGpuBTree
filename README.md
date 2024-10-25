@@ -69,7 +69,7 @@ Please create an issue if you face challenges with any of the following limitati
 * C++17/CUDA C++17
 * NVIDIA Volta GPU or later microarchitectures
 * CMake 3.18 or later
-* CUDA 11.5 or later
+* CUDA 12.0 or later
 * GPU with 20 GiBs or higher to run the benchmarks
 
 ### Limitations
